@@ -14,4 +14,7 @@ update users
 insert into forums (slug, title, user_nickname) values($1, $2, $3); 
 
 -- name: InsertThread :exec
-insert into threads (title, message, user_nickname) values($1, $2, $3);
+insert into threads (id, created, title, message, user_nickname, forum_slug) values(default, default, $1, $2, $3, $4);
+
+-- name: SelectForumBySlug :one
+select f.slug, f.title, f.user_nickname from forums as f join 
