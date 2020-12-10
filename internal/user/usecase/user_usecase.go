@@ -35,6 +35,11 @@ func (uu *UserUsecase) CreateUser(user *models.User) error {
 
 func (uu *UserUsecase) GetUserInfo(nickname string) (*models.User, error) {
 	user, err := uu.userRep.SelectUserByNickname(nickname)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
 	if err != nil {
 		return nil, err
 	}
