@@ -54,7 +54,7 @@ func (tr *ThreadRepository) SelectBySlugOrID(slugOrID string) (*models.Thread, e
 }
 
 func (tr *ThreadRepository) SelectThreadsByForumSlug(slug string, qpm *tools.QPM) ([]*models.Thread, error) {
-	query := "select id, slug, title, message, created, user_nickname, forum_slug, votes, slug from threads where forum_slug = $1"
+	query := "select id, slug, title, message, created, user_nickname, forum_slug, votes, slug from threads where lower(forum_slug) = lower($1)"
 	query = qpm.UpdateThreadQuery(query)
 
 	rows, err := tr.db.Query(query,

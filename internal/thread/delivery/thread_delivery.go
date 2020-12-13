@@ -143,7 +143,6 @@ func (td *ThreadDelivery) GetForumThreadsHandler() echo.HandlerFunc {
 		}
 
 		if forum == nil {
-			log.Println(err)
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstNotFoundMessage,
 			})

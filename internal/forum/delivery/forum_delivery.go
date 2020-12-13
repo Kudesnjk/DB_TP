@@ -44,7 +44,6 @@ func (fd *ForumDelivery) GetForumUsersHandler() echo.HandlerFunc {
 		}
 
 		if forum == nil {
-			log.Println(err)
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstInternalErrorMessage,
 			})
@@ -75,7 +74,6 @@ func (fd *ForumDelivery) GetForumHandler() echo.HandlerFunc {
 		}
 
 		if forum == nil {
-			log.Println(err)
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstInternalErrorMessage,
 			})
@@ -119,7 +117,6 @@ func (fd *ForumDelivery) CreateForumHandler() echo.HandlerFunc {
 		}
 
 		if user == nil {
-			log.Println(err)
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstNotFoundMessage,
 			})

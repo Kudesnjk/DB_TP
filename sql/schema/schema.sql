@@ -19,7 +19,7 @@ create table threads (
     slug text not null,
     title text not null,
     message text not null,
-    created timestamp not null default now(),
+    created timestamptz not null default now(),
     user_nickname text not null,
     forum_slug text not null,
     votes int not null default 0,

@@ -133,7 +133,6 @@ func (ud *UserDelivery) UpdateUserHandler() echo.HandlerFunc {
 		}
 
 		if user == nil {
-			log.Println(err)
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstNotFoundMessage,
 			})
