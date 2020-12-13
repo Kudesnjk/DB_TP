@@ -5,13 +5,19 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/labstack/echo/v4"
 	_ "github.com/lib/pq"
 
+	forumRepository "github.com/Kudesnjk/DB_TP/internal/forum/repository"
+	threadRepository "github.com/Kudesnjk/DB_TP/internal/thread/repository"
 	userRepository "github.com/Kudesnjk/DB_TP/internal/user/repository"
-	"github.com/labstack/echo/v4"
 
+	forumUsecase "github.com/Kudesnjk/DB_TP/internal/forum/usecase"
+	threadUsecase "github.com/Kudesnjk/DB_TP/internal/thread/usecase"
 	userUsecase "github.com/Kudesnjk/DB_TP/internal/user/usecase"
 
+	forumDelivery "github.com/Kudesnjk/DB_TP/internal/forum/delivery"
+	threadDelivery "github.com/Kudesnjk/DB_TP/internal/thread/delivery"
 	userDelivery "github.com/Kudesnjk/DB_TP/internal/user/delivery"
 )
 
@@ -32,13 +38,21 @@ func main() {
 	log.Printf("DB connected")
 
 	userRep := userRepository.NewUserRepository(dbConn)
+	forumRep := forumRepository.NewForumRepository(dbConn)
+	threadRep := threadRepository.NewThreadRepository(dbConn)
 
 	userUsecase := userUsecase.NewUserUsecase(userRep)
+	forumUsecase := forumUsecase.NewForumUsecase(forumRep)
+	threadUsecase := threadUsecase.NewThreadUsecase(threadRep)
 
 	userDelivery := userDelivery.NewUserDelivery(userUsecase)
+	forumDelivery := forumDelivery.NewForumDelivery(forumUsecase, userUsecase)
+	threadDelivery := threadDelivery.NewThreadDelivery(threadUsecase, userUsecase, forumUsecase)
 
 	e := echo.New()
 
 	userDelivery.Configure(e)
-	e.Logger.Fatal(e.Start("127.0.0.1:8080"))
+	forumDelivery.Configure(e)
+	threadDelivery.Configure(e)
+	e.Logger.Fatal(e.Start("127.0.0.1:5000"))
 }

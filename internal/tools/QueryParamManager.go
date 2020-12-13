@@ -39,9 +39,9 @@ func (qpm *QPM) UpdateThreadQuery(query string) string {
 	}
 
 	if qpm.Desc {
-		query += fmt.Sprintf(" order by threads.created ")
+		query += fmt.Sprintf(" order by threads.created desc ")
 	} else {
-		query += fmt.Sprintf(" order by threads.created desc")
+		query += fmt.Sprintf(" order by threads.created ")
 	}
 
 	if qpm.Limit > 0 {

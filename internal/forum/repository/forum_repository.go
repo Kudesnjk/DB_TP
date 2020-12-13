@@ -29,7 +29,7 @@ func (fr *ForumRepository) InsertForum(forum *models.Forum) error {
 func (fr *ForumRepository) SelectByForumSlug(slug string) (*models.Forum, error) {
 	forum := &models.Forum{}
 
-	err := fr.db.QueryRow("select slug, title, user_nickname, threads_num, posts_num from forums where slug = $1", slug).Scan(
+	err := fr.db.QueryRow("select slug, title, user_nickname, threads_num, posts_num from forums where lower(slug) = lower($1)", slug).Scan(
 		&forum.Slug,
 		&forum.Title,
 		&forum.User,

@@ -19,7 +19,7 @@ func NewUserRepository(db *sql.DB) user.UserRepository {
 }
 
 func (ur *UserRepository) SelectByNicknameOrEmail(nickname string, email string) ([]*models.User, error) {
-	rows, err := ur.db.Query("select fullname, nickname, email, about from users where nickname = $1 or email = $2",
+	rows, err := ur.db.Query("select fullname, nickname, email, about from users where lower(nickname) = lower($1) or lower(email) = lower($2)",
 		nickname, email)
 
 	if err != nil {
@@ -62,7 +62,7 @@ func (ur *UserRepository) InsertUser(user *models.User) error {
 func (ur *UserRepository) SelectUserByNickname(nickname string) (*models.User, error) {
 	user := &models.User{}
 
-	err := ur.db.QueryRow("select fullname, nickname, email, about from users where nickname = $1", nickname).Scan(
+	err := ur.db.QueryRow("select fullname, nickname, email, about from users where lower(nickname) = lower($1)", nickname).Scan(
 		&user.Fullname,
 		&user.Nickname,
 		&user.Email,
@@ -79,7 +79,7 @@ func (ur *UserRepository) SelectUserByNickname(nickname string) (*models.User, e
 func (ur *UserRepository) SelectUserByEmail(email string) (*models.User, error) {
 	user := &models.User{}
 
-	err := ur.db.QueryRow("select fullname, nickname, email, about from users where email = $1", email).Scan(
+	err := ur.db.QueryRow("select fullname, nickname, email, about from users where lower(email) = lower($1)", email).Scan(
 		&user.Fullname,
 		&user.Nickname,
 		&user.Email,
@@ -92,6 +92,7 @@ func (ur *UserRepository) SelectUserByEmail(email string) (*models.User, error) 
 
 	return user, nil
 }
+
 func (ur *UserRepository) UpdateUser(user *models.User) error {
 	_, err := ur.db.Exec("update users set fullname=$1, about=$2, email=$3 where nickname=$4",
 		user.Fullname,

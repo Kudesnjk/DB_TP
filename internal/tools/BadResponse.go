@@ -2,7 +2,7 @@ package tools
 
 const (
 	ConstInternalErrorMessage = "internal server error"
-	ConstNotFoundMessage      = "not found"
+	ConstNotFoundMessage      = "not found message"
 	ConstSomeMessage          = "some message"
 )
 

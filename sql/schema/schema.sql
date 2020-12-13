@@ -16,6 +16,7 @@ create table forums (
 
 create table threads (
     id serial primary key,
+    slug text not null,
     title text not null,
     message text not null,
     created timestamp not null default now(),
@@ -39,6 +40,7 @@ create table posts (
     foreign key (parent_id) references posts(id) on delete cascade
 );
 
+create index on users(lower(nickname));
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO db_forum_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO db_forum_user;

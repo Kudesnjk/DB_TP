@@ -93,7 +93,6 @@ func (ud *UserDelivery) GetUserHandler() echo.HandlerFunc {
 		}
 
 		if user == nil {
-			log.Println(err)
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstNotFoundMessage,
 			})
@@ -104,8 +103,25 @@ func (ud *UserDelivery) GetUserHandler() echo.HandlerFunc {
 }
 
 func (ud *UserDelivery) UpdateUserHandler() echo.HandlerFunc {
+	type Request struct {
+		About    string `json:"about"`
+		Email    string `json:"email"`
+		FullName string `json:"fullname"`
+	}
+
 	return func(ctx echo.Context) error {
 		nickname := ctx.Param("nickname")
+
+		request := &Request{}
+
+		err := ctx.Bind(request)
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
 
 		user, err := ud.userUsecase.GetUserInfo(nickname)
 
@@ -123,7 +139,11 @@ func (ud *UserDelivery) UpdateUserHandler() echo.HandlerFunc {
 			})
 		}
 
-		exists, err := ud.userUsecase.CheckEmailExists(user.Email)
+		if request.About == "" && request.FullName == "" && request.Email == "" {
+			return ctx.JSON(http.StatusOK, user)
+		}
+
+		exists, err := ud.userUsecase.CheckEmailExists(request.Email)
 		if err != nil {
 			log.Println(err)
 			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
@@ -135,6 +155,16 @@ func (ud *UserDelivery) UpdateUserHandler() echo.HandlerFunc {
 			return ctx.JSON(http.StatusConflict, tools.BadResponse{
 				Message: tools.ConstSomeMessage,
 			})
+		}
+
+		if request.About != "" {
+			user.About = request.About
+		}
+		if request.FullName != "" {
+			user.Fullname = request.FullName
+		}
+		if request.Email != "" {
+			user.Email = request.Email
 		}
 
 		err = ud.userUsecase.UpdateUserInfo(user)

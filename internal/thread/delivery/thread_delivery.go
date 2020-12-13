@@ -35,15 +35,17 @@ func (td *ThreadDelivery) Configure(e *echo.Echo) {
 	e.POST("api/forum/:slug/create", td.CreateThreadHandler())
 	e.GET("api/forum/:slug/threads", td.GetForumThreadsHandler())
 	e.GET("api/thread/:slug_or_id/details", td.GetConcreteThreadHandler())
+	e.POST("api/thread/:slug_or_id/details", td.UpdateThreadHandler())
 }
 
 func (td *ThreadDelivery) CreateThreadHandler() echo.HandlerFunc {
 	type Request struct {
 		Author  string    `json:"author"`
+		Slug    string    `json:"slug"`
 		Created time.Time `json:"created"`
 		Message string    `json:"message"`
 		Title   string    `json:"title"`
-		Slug    string    `json:"slug"`
+		Forum   string    `json:"forum"`
 	}
 
 	return func(ctx echo.Context) error {
@@ -67,7 +69,6 @@ func (td *ThreadDelivery) CreateThreadHandler() echo.HandlerFunc {
 		}
 
 		if forum == nil {
-			log.Println(err)
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstNotFoundMessage,
 			})
@@ -82,7 +83,6 @@ func (td *ThreadDelivery) CreateThreadHandler() echo.HandlerFunc {
 		}
 
 		if user == nil {
-			log.Println(err)
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstNotFoundMessage,
 			})
@@ -98,7 +98,6 @@ func (td *ThreadDelivery) CreateThreadHandler() echo.HandlerFunc {
 			}
 
 			if thread != nil {
-				log.Println(err)
 				return ctx.JSON(http.StatusConflict, tools.BadResponse{
 					Message: tools.ConstNotFoundMessage,
 				})
@@ -106,11 +105,15 @@ func (td *ThreadDelivery) CreateThreadHandler() echo.HandlerFunc {
 		}
 
 		thread := &models.Thread{
-			Author:  request.Author,
-			Created: request.Created,
-			Message: request.Message,
-			Title:   request.Title,
-			Slug:    request.Slug,
+			Author:    request.Author,
+			Created:   request.Created,
+			Message:   request.Message,
+			Title:     request.Title,
+			ForumSlug: slug,
+		}
+
+		if request.Slug != thread.ForumSlug {
+			thread.Slug = request.Slug
 		}
 
 		err = td.threadUsecase.CreateThread(thread)
@@ -172,7 +175,43 @@ func (td *ThreadDelivery) GetConcreteThreadHandler() echo.HandlerFunc {
 		}
 
 		if thread == nil {
+			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+				Message: tools.ConstNotFoundMessage,
+			})
+		}
+
+		return ctx.JSON(http.StatusOK, thread)
+	}
+}
+
+func (td *ThreadDelivery) UpdateThreadHandler() echo.HandlerFunc {
+	type Request struct {
+		Message string `json:"message"`
+		Title   string `json:"title"`
+	}
+
+	return func(ctx echo.Context) error {
+		slugOrID := ctx.Param("slug_or_id")
+		request := &Request{}
+		err := ctx.Bind(request)
+
+		if err != nil {
 			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		thread, err := td.threadUsecase.GetThreadInfo(slugOrID)
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		if thread == nil {
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstNotFoundMessage,
 			})

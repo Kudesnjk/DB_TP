@@ -9,32 +9,32 @@ import (
 
 	"github.com/Kudesnjk/DB_TP/internal/tools"
 
-	"github.com/Kudesnjk/DB_TP/internal/forum"
+	"github.com/Kudesnjk/DB_TP/internal/post"
 	"github.com/labstack/echo/v4"
 )
 
-type ForumDelivery struct {
-	forumUsecase forum.ForumUsecase
-	userUsecase  user.UserUsecase
+type PostDelivery struct {
+	postUsecase post.PostUsecase
+	userUsecase user.UserUsecase
 }
 
-func NewForumDelivery(forumUsecase forum.ForumUsecase, userUsecase user.UserUsecase) *ForumDelivery {
-	return &ForumDelivery{
-		forumUsecase: forumUsecase,
-		userUsecase:  userUsecase,
+func NewPostDelivery(postUsecase post.PostUsecase, userUsecase user.UserUsecase) *PostDelivery {
+	return &PostDelivery{
+		postUsecase: postUsecase,
+		userUsecase: userUsecase,
 	}
 }
 
-func (fd *ForumDelivery) Configure(e *echo.Echo) {
-	e.POST("api/forum/create", fd.CreateForumHandler())
-	e.GET("api/forum/:slug/details", fd.GetForumHandler())
-	e.GET("api/forum/:slug/users", fd.GetForumUsersHandler())
+func (fd *PostDelivery) Configure(e *echo.Echo) {
+	e.POST("api/thread/:slug_or_id/create", fd.CreatePostHandler())
+	e.GET("api/post/:slug/details", fd.GetPostHandler())
+	e.GET("api/post/:slug/users", fd.GetPostUsersHandler())
 }
 
-func (fd *ForumDelivery) GetForumUsersHandler() echo.HandlerFunc {
+func (fd *PostDelivery) GetPostUsersHandler() echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		slug := ctx.Param("slug")
-		forum, err := fd.forumUsecase.GetForumInfo(slug)
+		post, err := fd.postUsecase.GetPostInfo(slug)
 
 		if err != nil {
 			log.Println(err)
@@ -43,14 +43,14 @@ func (fd *ForumDelivery) GetForumUsersHandler() echo.HandlerFunc {
 			})
 		}
 
-		if forum == nil {
+		if post == nil {
 			log.Println(err)
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstInternalErrorMessage,
 			})
 		}
 
-		users, err := fd.forumUsecase.GetForumUsers(slug)
+		users, err := fd.postUsecase.GetPostUsers(slug)
 		if err != nil {
 			log.Println(err)
 			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
@@ -62,10 +62,10 @@ func (fd *ForumDelivery) GetForumUsersHandler() echo.HandlerFunc {
 	}
 }
 
-func (fd *ForumDelivery) GetForumHandler() echo.HandlerFunc {
+func (fd *PostDelivery) GetPostHandler() echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		slug := ctx.Param("slug")
-		forum, err := fd.forumUsecase.GetForumInfo(slug)
+		post, err := fd.postUsecase.GetPostInfo(slug)
 
 		if err != nil {
 			log.Println(err)
@@ -74,25 +74,19 @@ func (fd *ForumDelivery) GetForumHandler() echo.HandlerFunc {
 			})
 		}
 
-		if forum == nil {
+		if post == nil {
 			log.Println(err)
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstInternalErrorMessage,
 			})
 		}
 
-		return ctx.JSON(http.StatusOK, forum)
+		return ctx.JSON(http.StatusOK, post)
 	}
 }
 
-func (fd *ForumDelivery) CreateForumHandler() echo.HandlerFunc {
+func (fd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 	type Request struct {
-		Slug  string `json:"slug"`
-		User  string `json:"user"`
-		Title string `json:"title"`
-	}
-
-	type Response struct {
 		Slug  string `json:"slug"`
 		User  string `json:"user"`
 		Title string `json:"title"`
@@ -125,7 +119,7 @@ func (fd *ForumDelivery) CreateForumHandler() echo.HandlerFunc {
 			})
 		}
 
-		forum, err := fd.forumUsecase.GetForumInfo(request.Slug)
+		post, err := fd.postUsecase.GetPostInfo(request.Slug)
 
 		if err != nil {
 			log.Println(err)
@@ -134,29 +128,26 @@ func (fd *ForumDelivery) CreateForumHandler() echo.HandlerFunc {
 			})
 		}
 
-		if forum != nil {
-			return ctx.JSON(http.StatusConflict, forum)
+		if post != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusConflict, tools.BadResponse{
+				Message: tools.ConstNotFoundMessage,
+			})
 		}
 
-		newForum := &models.Forum{
-			User:  user.Nickname,
+		newPost := &models.Post{
+			User:  request.User,
 			Title: request.Title,
 			Slug:  request.Slug,
 		}
 
-		err = fd.forumUsecase.CreateForum(newForum)
+		err = fd.postUsecase.CreatePost(newPost)
 		if err != nil {
 			log.Println(err)
 			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
 				Message: tools.ConstInternalErrorMessage,
 			})
 		}
-
-		response := &Response{
-			User:  newForum.User,
-			Title: newForum.Title,
-			Slug:  newForum.Slug,
-		}
-		return ctx.JSON(http.StatusCreated, response)
+		return ctx.JSON(http.StatusCreated, newPost)
 	}
 }
