@@ -1,46 +1,108 @@
-create table users (
-    nickname text primary key,
-    email text unique not null,
-    fullname text not null ,
+CREATE TABLE users (
+    nickname text PRIMARY KEY,
+    email text UNIQUE NOT NULL,
+    fullname text NOT NULL,
     about text
 );
 
-create table forums (
-    slug text primary key ,
-    title text not null,
-    user_nickname text not null,
-    threads_num int not null default 0,
-    posts_num int not null default 0,
-    foreign key (user_nickname) references users(nickname) on delete cascade
+CREATE TABLE forums (
+    slug text PRIMARY KEY,
+    title text NOT NULL,
+    user_nickname text NOT NULL,
+    threads_num int NOT NULL DEFAULT 0,
+    posts_num int NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_nickname) REFERENCES users(nickname) ON DELETE CASCADE
 );
 
-create table threads (
-    id serial primary key,
-    slug text not null,
-    title text not null,
-    message text not null,
-    created timestamptz not null default now(),
-    user_nickname text not null,
-    forum_slug text not null,
-    votes int not null default 0,
-    foreign key (user_nickname) references users(nickname) on delete cascade ,
-    foreign key (forum_slug) references forums(slug) on delete cascade
+CREATE TABLE threads (
+    id serial PRIMARY KEY,
+    slug text NOT NULL,
+    title text NOT NULL,
+    message text NOT NULL,
+    created timestamptz NOT NULL DEFAULT NOW(),
+    user_nickname text NOT NULL,
+    forum_slug text NOT NULL,
+    votes int NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_nickname) REFERENCES users(nickname) ON DELETE CASCADE,
+    FOREIGN KEY (forum_slug) REFERENCES forums(slug) ON DELETE CASCADE
 );
 
-create table posts (
-    id serial primary key ,
-    message text not null ,
-    is_edited boolean not null default false,
-    created timestamp not null default now(),
-    parent_id int not null default 0,
-    user_nickname text not null ,
-    thread_id int not null,
-    foreign key (user_nickname) references users(nickname) on delete cascade ,
-    foreign key (thread_id) references threads(id) on delete cascade ,
-    foreign key (parent_id) references posts(id) on delete cascade
+CREATE TABLE votes (
+    user_nickname text NOT NULL REFERENCES users (nickname) ON DELETE CASCADE,
+    thread_id int NOT NULL REFERENCES threads (id) ON DELETE CASCADE,
+    voice int NOT NULL,
+    PRIMARY KEY(user_nickname, thread_id)
 );
 
-create index on users(lower(nickname));
+CREATE TABLE posts (
+    id serial PRIMARY KEY,
+    message text NOT NULL,
+    is_edited boolean NOT NULL DEFAULT false,
+    created timestamptz NOT NULL DEFAULT NOW(),
+    parent_id int NOT NULL DEFAULT 0,
+    path integer [] NOT NULL DEFAULT '{}',
+    user_nickname text NOT NULL,
+    forum_slug text NOT NULL,
+    thread_id int NOT NULL,
+    FOREIGN KEY (user_nickname) REFERENCES users(nickname) ON DELETE CASCADE,
+    FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE,
+    FOREIGN KEY (forum_slug) REFERENCES forums(slug) ON DELETE CASCADE
+);
+
+CREATE INDEX ON users(lower(nickname));
+
+CREATE
+OR REPLACE FUNCTION vote() RETURNS TRIGGER AS $ vote $ BEGIN
+UPDATE
+    threads
+SET
+    votes = votes + new.voice
+WHERE
+    id = new.thread_id;
+
+RETURN new;
+
+END;
+
+$ vote $ LANGUAGE plpgsql;
+
+CREATE
+OR REPLACE FUNCTION revote() RETURNS TRIGGER AS $ revote $ BEGIN IF (old.voice != new.voice) THEN
+UPDATE
+    threads
+SET
+    votes = votes + new.voice - old.voice
+WHERE
+    id = new.thread_id;
+
+END IF;
+
+RETURN new;
+
+END;
+
+$ revote $ LANGUAGE plpgsql;
+
+CREATE TRIGGER vote_count
+AFTER
+INSERT
+    ON votes FOR EACH ROW EXECUTE PROCEDURE vote();
+
+CREATE TRIGGER revote_count BEFORE
+UPDATE
+    ON votes FOR EACH ROW EXECUTE PROCEDURE revote();
+
+CREATE
+OR REPLACE FUNCTION parent_path() RETURNS trigger LANGUAGE plpgsql AS $ func $ BEGIN NEW.path := NEW.path || ARRAY [NEW.id];
+
+RETURN NEW;
+
+END $ func $;
+
+CREATE TRIGGER parent_path_count BEFORE
+INSERT
+    ON posts FOR EACH ROW EXECUTE PROCEDURE parent_path();
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO db_forum_user;
+
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO db_forum_user;

@@ -35,7 +35,7 @@ func (tr *ThreadRepository) InsertThread(thread *models.Thread) error {
 func (tr *ThreadRepository) SelectBySlugOrID(slugOrID string) (*models.Thread, error) {
 	thread := &models.Thread{}
 
-	err := tr.db.QueryRow("select id, slug, title, message, created, user_nickname, forum_slug, votes from threads where id::varchar = $1 or slug = $1",
+	err := tr.db.QueryRow("select id, slug, title, message, created, user_nickname, forum_slug, votes from threads where id::varchar = $1 or lower(slug) = lower($1)",
 		slugOrID).Scan(
 		&thread.ID,
 		&thread.Slug,
@@ -89,12 +89,19 @@ func (tr *ThreadRepository) SelectThreadsByForumSlug(slug string, qpm *tools.QPM
 }
 
 func (tr *ThreadRepository) UpdateThread(thread *models.Thread) error {
-	err := tr.db.QueryRow("insert into threads(id, title, message, created, user_nickname, forum_slug, votes) values (default, $1, $2, $3, $4, $5, default) returning id",
-		thread.Title,
+	_, err := tr.db.Exec("update threads set message = $1, title = $2 where id = $3",
 		thread.Message,
-		thread.Created,
-		thread.Author,
-		thread.ForumSlug,
-	).Scan(&thread.ID)
+		thread.Title,
+		thread.ID,
+	)
+	return err
+}
+
+func (tr *ThreadRepository) InsertVote(nickname string, threadID int, vote int) error {
+	_, err := tr.db.Exec(`insert into votes(user_nickname, thread_id, voice) values ($1, $2, $3) 
+	on conflict (user_nickname, thread_id) DO UPDATE SET voice = $3`,
+		nickname,
+		threadID,
+		vote)
 	return err
 }

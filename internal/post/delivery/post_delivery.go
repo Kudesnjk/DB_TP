@@ -1,10 +1,16 @@
 package delivery
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Kudesnjk/DB_TP/internal/models"
+
+	"github.com/Kudesnjk/DB_TP/internal/thread"
+
 	"github.com/Kudesnjk/DB_TP/internal/user"
 
 	"github.com/Kudesnjk/DB_TP/internal/tools"
@@ -14,27 +20,29 @@ import (
 )
 
 type PostDelivery struct {
-	postUsecase post.PostUsecase
-	userUsecase user.UserUsecase
+	postUsecase   post.PostUsecase
+	userUsecase   user.UserUsecase
+	threadUsecase thread.ThreadUsecase
 }
 
-func NewPostDelivery(postUsecase post.PostUsecase, userUsecase user.UserUsecase) *PostDelivery {
+func NewPostDelivery(postUsecase post.PostUsecase, userUsecase user.UserUsecase, threadUsecase thread.ThreadUsecase) *PostDelivery {
 	return &PostDelivery{
-		postUsecase: postUsecase,
-		userUsecase: userUsecase,
+		postUsecase:   postUsecase,
+		userUsecase:   userUsecase,
+		threadUsecase: threadUsecase,
 	}
 }
 
-func (fd *PostDelivery) Configure(e *echo.Echo) {
-	e.POST("api/thread/:slug_or_id/create", fd.CreatePostHandler())
-	e.GET("api/post/:slug/details", fd.GetPostHandler())
-	e.GET("api/post/:slug/users", fd.GetPostUsersHandler())
+func (pd *PostDelivery) Configure(e *echo.Echo) {
+	e.POST("api/thread/:slug_or_id/create", pd.CreatePostHandler())
+	e.GET("api/thread/:slug_or_id/posts", pd.GetPostsHandler())
 }
 
-func (fd *PostDelivery) GetPostUsersHandler() echo.HandlerFunc {
+func (pd *PostDelivery) GetPostsHandler() echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		slug := ctx.Param("slug")
-		post, err := fd.postUsecase.GetPostInfo(slug)
+		slugOrID := ctx.Param("slug_or_id")
+
+		thread, err := pd.threadUsecase.GetThreadInfo(slugOrID)
 
 		if err != nil {
 			log.Println(err)
@@ -43,83 +51,14 @@ func (fd *PostDelivery) GetPostUsersHandler() echo.HandlerFunc {
 			})
 		}
 
-		if post == nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
-		users, err := fd.postUsecase.GetPostUsers(slug)
-		if err != nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
-		return ctx.JSON(http.StatusOK, users)
-	}
-}
-
-func (fd *PostDelivery) GetPostHandler() echo.HandlerFunc {
-	return func(ctx echo.Context) error {
-		slug := ctx.Param("slug")
-		post, err := fd.postUsecase.GetPostInfo(slug)
-
-		if err != nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
-		if post == nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
-		return ctx.JSON(http.StatusOK, post)
-	}
-}
-
-func (fd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
-	type Request struct {
-		Slug  string `json:"slug"`
-		User  string `json:"user"`
-		Title string `json:"title"`
-	}
-
-	return func(ctx echo.Context) error {
-		request := &Request{}
-		err := ctx.Bind(request)
-
-		if err != nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
-		user, err := fd.userUsecase.GetUserInfo(request.User)
-
-		if err != nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
-		if user == nil {
-			log.Println(err)
+		if thread == nil {
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstNotFoundMessage,
 			})
 		}
 
-		post, err := fd.postUsecase.GetPostInfo(request.Slug)
+		qpm := tools.NewQPM(ctx)
+		posts, err := pd.postUsecase.GetPosts(thread.ID, qpm)
 
 		if err != nil {
 			log.Println(err)
@@ -128,26 +67,73 @@ func (fd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 			})
 		}
 
-		if post != nil {
+		return ctx.JSON(http.StatusOK, posts)
+	}
+}
+
+func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		slugOrID := ctx.Param("slug_or_id")
+		posts := make([]*models.Post, 0)
+
+		result, err := ioutil.ReadAll(ctx.Request().Body)
+		if err != nil {
 			log.Println(err)
-			return ctx.JSON(http.StatusConflict, tools.BadResponse{
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		err = json.Unmarshal(result, &posts)
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		if len(posts) == 0 {
+			return ctx.JSON(http.StatusCreated, posts)
+		}
+
+		thread, err := pd.threadUsecase.GetThreadInfo(slugOrID)
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		if thread == nil {
+			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstNotFoundMessage,
 			})
 		}
 
-		newPost := &models.Post{
-			User:  request.User,
-			Title: request.Title,
-			Slug:  request.Slug,
+		now := time.Now()
+
+		for _, post := range posts {
+			post.Created = now
+			post.ThreadSlug = thread.Slug
+			post.ForumSlug = thread.ForumSlug
+			post.ThreadID = thread.ID
+			err := pd.postUsecase.CreatePost(post)
+			if err != nil {
+				log.Println(err)
+				return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+					Message: tools.ConstInternalErrorMessage,
+				})
+			}
 		}
 
-		err = fd.postUsecase.CreatePost(newPost)
-		if err != nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-		return ctx.JSON(http.StatusCreated, newPost)
+		return ctx.JSON(http.StatusCreated, posts)
 	}
 }

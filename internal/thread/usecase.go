@@ -9,4 +9,6 @@ type ThreadUsecase interface {
 	GetThreadInfo(slugOrID string) (*models.Thread, error)
 	CreateThread(thread *models.Thread) error
 	GetThreadsByForumSlug(slug string, qpm *tools.QPM) ([]*models.Thread, error)
+	VoteThread(threadID int, nickname string, vote int) error
+	UpdateThread(thread *models.Thread) error
 }

@@ -36,6 +36,7 @@ func (td *ThreadDelivery) Configure(e *echo.Echo) {
 	e.GET("api/forum/:slug/threads", td.GetForumThreadsHandler())
 	e.GET("api/thread/:slug_or_id/details", td.GetConcreteThreadHandler())
 	e.POST("api/thread/:slug_or_id/details", td.UpdateThreadHandler())
+	e.POST("api/thread/:slug_or_id/vote", td.VoteThreadHandler())
 }
 
 func (td *ThreadDelivery) CreateThreadHandler() echo.HandlerFunc {
@@ -98,9 +99,7 @@ func (td *ThreadDelivery) CreateThreadHandler() echo.HandlerFunc {
 			}
 
 			if thread != nil {
-				return ctx.JSON(http.StatusConflict, tools.BadResponse{
-					Message: tools.ConstNotFoundMessage,
-				})
+				return ctx.JSON(http.StatusConflict, thread)
 			}
 		}
 
@@ -109,7 +108,7 @@ func (td *ThreadDelivery) CreateThreadHandler() echo.HandlerFunc {
 			Created:   request.Created,
 			Message:   request.Message,
 			Title:     request.Title,
-			ForumSlug: slug,
+			ForumSlug: forum.Slug,
 		}
 
 		if request.Slug != thread.ForumSlug {
@@ -202,6 +201,92 @@ func (td *ThreadDelivery) UpdateThreadHandler() echo.HandlerFunc {
 		}
 
 		thread, err := td.threadUsecase.GetThreadInfo(slugOrID)
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		if thread == nil {
+			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+				Message: tools.ConstNotFoundMessage,
+			})
+		}
+
+		thread.Title = request.Title
+		thread.Message = request.Message
+		err = td.threadUsecase.UpdateThread(thread)
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		return ctx.JSON(http.StatusOK, thread)
+	}
+}
+
+func (td *ThreadDelivery) VoteThreadHandler() echo.HandlerFunc {
+	type Request struct {
+		Nickname string `json:"nickname"`
+		Voice    int    `json:"voice"`
+	}
+	return func(ctx echo.Context) error {
+		slugOrID := ctx.Param("slug_or_id")
+		request := &Request{}
+		err := ctx.Bind(request)
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		thread, err := td.threadUsecase.GetThreadInfo(slugOrID)
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		if thread == nil {
+			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+				Message: tools.ConstNotFoundMessage,
+			})
+		}
+
+		user, err := td.userUsecase.GetUserInfo(request.Nickname)
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		if user == nil {
+			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+				Message: tools.ConstNotFoundMessage,
+			})
+		}
+
+		err = td.threadUsecase.VoteThread(int(thread.ID), request.Nickname, request.Voice)
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		thread, err = td.threadUsecase.GetThreadInfo(slugOrID)
 
 		if err != nil {
 			log.Println(err)

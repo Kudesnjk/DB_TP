@@ -48,3 +48,11 @@ func (tu *ThreadUsecase) GetThreadsByForumSlug(slug string, qpm *tools.QPM) ([]*
 	}
 	return threads, nil
 }
+
+func (tu *ThreadUsecase) VoteThread(threadID int, nickname string, vote int) error {
+	return tu.threadRep.InsertVote(nickname, threadID, vote)
+}
+
+func (tu *ThreadUsecase) UpdateThread(thread *models.Thread) error {
+	return tu.threadRep.UpdateThread(thread)
+}
