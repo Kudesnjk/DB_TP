@@ -3,6 +3,8 @@ package usecase
 import (
 	"database/sql"
 
+	"github.com/Kudesnjk/DB_TP/internal/tools"
+
 	"github.com/Kudesnjk/DB_TP/internal/forum"
 	"github.com/Kudesnjk/DB_TP/internal/models"
 )
@@ -39,8 +41,8 @@ func (fu *ForumUsecase) GetForumInfo(slug string) (*models.Forum, error) {
 	return forum, nil
 }
 
-func (fu *ForumUsecase) GetForumUsers(slug string) ([]*models.User, error) {
-	users, err := fu.forumRep.SelectForumUsers(slug)
+func (fu *ForumUsecase) GetForumUsers(slug string, qpm *tools.QPM) ([]*models.User, error) {
+	users, err := fu.forumRep.SelectForumUsers(slug, qpm)
 	if err != nil {
 		return nil, err
 	}

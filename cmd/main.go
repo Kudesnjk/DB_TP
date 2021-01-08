@@ -26,7 +26,7 @@ import (
 
 func main() {
 	dbConn, err := sql.Open("postgres", fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		"localhost", 5432, "db_forum_user", "9680nM", "db_forum"))
+		"localhost", 5432, "postgres", "postgres", "forum"))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,5 +1,8 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
 CREATE TABLE users (
-    nickname text PRIMARY KEY,
+    id serial,
+    nickname citext COLLATE "C" PRIMARY KEY,
     email text UNIQUE NOT NULL,
     fullname text NOT NULL,
     about text
@@ -52,22 +55,19 @@ CREATE TABLE posts (
 CREATE INDEX ON users(lower(nickname));
 
 CREATE
-OR REPLACE FUNCTION vote() RETURNS TRIGGER AS $ vote $ BEGIN
+OR REPLACE FUNCTION vote() RETURNS TRIGGER AS $vote$ BEGIN
 UPDATE
     threads
 SET
     votes = votes + new.voice
 WHERE
     id = new.thread_id;
-
 RETURN new;
-
 END;
-
-$ vote $ LANGUAGE plpgsql;
+$vote$ LANGUAGE plpgsql;
 
 CREATE
-OR REPLACE FUNCTION revote() RETURNS TRIGGER AS $ revote $ BEGIN IF (old.voice != new.voice) THEN
+OR REPLACE FUNCTION revote() RETURNS TRIGGER AS $revote$ BEGIN IF (old.voice != new.voice) THEN
 UPDATE
     threads
 SET
@@ -76,12 +76,9 @@ WHERE
     id = new.thread_id;
 
 END IF;
-
 RETURN new;
-
 END;
-
-$ revote $ LANGUAGE plpgsql;
+$revote$ LANGUAGE plpgsql;
 
 CREATE TRIGGER vote_count
 AFTER
@@ -93,16 +90,39 @@ UPDATE
     ON votes FOR EACH ROW EXECUTE PROCEDURE revote();
 
 CREATE
-OR REPLACE FUNCTION parent_path() RETURNS trigger LANGUAGE plpgsql AS $ func $ BEGIN NEW.path := NEW.path || ARRAY [NEW.id];
-
+OR REPLACE FUNCTION parent_path() RETURNS trigger LANGUAGE plpgsql AS $func$ BEGIN NEW.path := NEW.path || ARRAY [NEW.id];
 RETURN NEW;
-
-END $ func $;
+END $func$;
 
 CREATE TRIGGER parent_path_count BEFORE
 INSERT
     ON posts FOR EACH ROW EXECUTE PROCEDURE parent_path();
 
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO db_forum_user;
+CREATE OR REPLACE FUNCTION forum_posts_count()
+    RETURNS trigger AS
+$forum_posts_count$
+BEGIN
+    update forums set posts_num = posts_num + 1 where slug = new.forum_slug;
+    return new;
+END;
+$forum_posts_count$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION forum_thread_count()
+    RETURNS trigger AS
+$forum_thread_count$
+BEGIN
+    update forums set threads_num = threads_num + 1 where slug = new.forum_slug;
+    return new;
+END;
+$forum_thread_count$ LANGUAGE plpgsql;
+
+CREATE TRIGGER forum_post_count
+    AFTER INSERT ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE forum_posts_count();
+
+CREATE TRIGGER forum_thread_count
+AFTER INSERT ON threads FOR EACH ROW EXECUTE PROCEDURE forum_thread_count();
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO db_forum_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO db_forum_user;

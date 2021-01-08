@@ -35,6 +35,26 @@ func NewQPM(ctx echo.Context) *QPM {
 	return qpm
 }
 
+func (qpm *QPM) UpdateForumUsersQuery(query string) string {
+	if qpm.Desc {
+		if qpm.Since != "" {
+			query += fmt.Sprintf(" and nickname < '%s' ", qpm.Since)
+		}
+		query += fmt.Sprintf(" order by nickname desc")
+	} else {
+		if qpm.Since != "" {
+			query += fmt.Sprintf(" and nickname > '%s' ", qpm.Since)
+		}
+		query += fmt.Sprintf(" order by nickname ")
+	}
+
+	if qpm.Limit > 0 {
+		query += fmt.Sprintf(" limit %d ", qpm.Limit)
+	}
+
+	return query
+}
+
 func (qpm *QPM) UpdatePostQuery(query string) string {
 	switch qpm.Sort {
 	case "tree":
