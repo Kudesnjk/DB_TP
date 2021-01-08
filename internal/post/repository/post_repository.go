@@ -88,3 +88,45 @@ func (pr *PostRepository) SelectPosts(threadID uint64, qpm *tools.QPM) ([]*model
 
 	return posts, nil
 }
+
+func (pr *PostRepository) UpdatePost(post *models.Post) error {
+	query := `update posts set message = $1, is_edited = true where id = $2 returning id, message, is_edited, created, parent_id, user_nickname, forum_slug, thread_id, path`
+
+	err := pr.db.QueryRow(query, post.Message, post.ID).
+		Scan(&post.ID,
+			&post.Message,
+			&post.IsEdited,
+			&post.Created,
+			&post.Parent,
+			&post.Author,
+			&post.ForumSlug,
+			&post.ThreadID,
+			pq.Array(&post.Path))
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pr *PostRepository) SelectPost(postID uint64) (*models.Post, error) {
+	query := `select id, message, is_edited, created, parent_id, user_nickname, forum_slug, thread_id, path from posts where id = $1`
+	post := &models.Post{}
+
+	err := pr.db.QueryRow(query, postID).
+		Scan(&post.ID,
+			&post.Message,
+			&post.IsEdited,
+			&post.Created,
+			&post.Parent,
+			&post.Author,
+			&post.ForumSlug,
+			&post.ThreadID,
+			pq.Array(&post.Path))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return post, nil
+}

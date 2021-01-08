@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"database/sql"
+
 	"github.com/Kudesnjk/DB_TP/internal/models"
 	"github.com/Kudesnjk/DB_TP/internal/post"
 	"github.com/Kudesnjk/DB_TP/internal/tools"
@@ -30,4 +32,22 @@ func (pu *PostUsecase) GetPosts(threadID uint64, qpm *tools.QPM) ([]*models.Post
 		return nil, err
 	}
 	return posts, nil
+}
+
+func (pu *PostUsecase) UpdatePost(post *models.Post) error {
+	return pu.postRep.UpdatePost(post)
+}
+
+func (pu *PostUsecase) GetPost(postID uint64) (*models.Post, error) {
+	post, err := pu.postRep.SelectPost(postID)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return post, nil
 }

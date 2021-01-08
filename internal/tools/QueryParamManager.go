@@ -35,16 +35,23 @@ func NewQPM(ctx echo.Context) *QPM {
 	return qpm
 }
 
-func (qpm *QPM) UpdateForumUsersQuery(query string) string {
+func (qpm *QPM) UpdateForumUsersQuery(queryThreads, queryPosts string) string {
+	query := ""
+	unionStr := " union distinct "
+
 	if qpm.Desc {
 		if qpm.Since != "" {
-			query += fmt.Sprintf(" and nickname < '%s' ", qpm.Since)
+			queryThreads += fmt.Sprintf(" and nickname < '%s' ", qpm.Since)
+			queryPosts += fmt.Sprintf(" and nickname < '%s' ", qpm.Since)
 		}
+		query = queryThreads + unionStr + queryPosts
 		query += fmt.Sprintf(" order by nickname desc")
 	} else {
 		if qpm.Since != "" {
-			query += fmt.Sprintf(" and nickname > '%s' ", qpm.Since)
+			queryThreads += fmt.Sprintf(" and nickname > '%s' ", qpm.Since)
+			queryPosts += fmt.Sprintf(" and nickname > '%s' ", qpm.Since)
 		}
+		query = queryThreads + unionStr + queryPosts
 		query += fmt.Sprintf(" order by nickname ")
 	}
 

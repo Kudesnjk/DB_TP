@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"fmt"
 
 	"github.com/Kudesnjk/DB_TP/internal/tools"
 
@@ -48,14 +47,14 @@ func (fr *ForumRepository) SelectByForumSlug(slug string) (*models.Forum, error)
 }
 
 func (fr *ForumRepository) SelectForumUsers(slug string, qpm *tools.QPM) ([]*models.User, error) {
-	query := `select u.fullname, u.nickname, u.email, u.about from users u 
-	join threads t on u.nickname = t.user_nickname where forum_slug = $1
-	union DISTINCT select u.fullname, u.nickname, u.email, u.about from users u 
-	join posts p on u.nickname = p.user_nickname 
-	join threads t on p.thread_id = t.id where t.forum_slug = $1 `
+	queryThreads := `select u.fullname, u.nickname, u.email, u.about from users u 
+	join threads t on u.nickname = t.user_nickname where lower(forum_slug) = lower($1)`
 
-	query = qpm.UpdateForumUsersQuery(query)
-	fmt.Println(query)
+	queryPosts := `select u.fullname, u.nickname, u.email, u.about from users u 
+	join posts p on u.nickname = p.user_nickname 
+	join threads t on p.thread_id = t.id where lower(t.forum_slug) = lower($1)`
+
+	query := qpm.UpdateForumUsersQuery(queryThreads, queryPosts)
 
 	rows, err := fr.db.Query(query, slug)
 

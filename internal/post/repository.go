@@ -8,4 +8,6 @@ import (
 type PostRepository interface {
 	InsertPost(post *models.Post) error
 	SelectPosts(threadID uint64, qpm *tools.QPM) ([]*models.Post, error)
+	SelectPost(postID uint64) (*models.Post, error)
+	UpdatePost(post *models.Post) error
 }
