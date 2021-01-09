@@ -123,6 +123,3 @@ EXECUTE PROCEDURE forum_posts_count();
 
 CREATE TRIGGER forum_thread_count
 AFTER INSERT ON threads FOR EACH ROW EXECUTE PROCEDURE forum_thread_count();
-
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO db_forum_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO db_forum_user;
