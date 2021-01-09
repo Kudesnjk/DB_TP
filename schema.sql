@@ -1,3 +1,8 @@
+\c forum;
+
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+
 CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE users (
@@ -9,9 +14,9 @@ CREATE TABLE users (
 );
 
 CREATE TABLE forums (
-    slug text PRIMARY KEY,
+    slug citext PRIMARY KEY,
     title text NOT NULL,
-    user_nickname text NOT NULL,
+    user_nickname citext NOT NULL,
     threads_num int NOT NULL DEFAULT 0,
     posts_num int NOT NULL DEFAULT 0,
     FOREIGN KEY (user_nickname) REFERENCES users(nickname) ON DELETE CASCADE
@@ -23,15 +28,15 @@ CREATE TABLE threads (
     title text NOT NULL,
     message text NOT NULL,
     created timestamptz NOT NULL DEFAULT NOW(),
-    user_nickname text NOT NULL,
-    forum_slug text NOT NULL,
+    user_nickname citext NOT NULL,
+    forum_slug citext NOT NULL,
     votes int NOT NULL DEFAULT 0,
     FOREIGN KEY (user_nickname) REFERENCES users(nickname) ON DELETE CASCADE,
     FOREIGN KEY (forum_slug) REFERENCES forums(slug) ON DELETE CASCADE
 );
 
 CREATE TABLE votes (
-    user_nickname text NOT NULL REFERENCES users (nickname) ON DELETE CASCADE,
+    user_nickname citext NOT NULL REFERENCES users (nickname) ON DELETE CASCADE,
     thread_id int NOT NULL REFERENCES threads (id) ON DELETE CASCADE,
     voice int NOT NULL,
     PRIMARY KEY(user_nickname, thread_id)
@@ -44,8 +49,8 @@ CREATE TABLE posts (
     created timestamptz NOT NULL DEFAULT NOW(),
     parent_id int NOT NULL DEFAULT 0,
     path integer [] NOT NULL DEFAULT '{}',
-    user_nickname text NOT NULL,
-    forum_slug text NOT NULL,
+    user_nickname citext NOT NULL,
+    forum_slug citext NOT NULL,
     thread_id int NOT NULL,
     FOREIGN KEY (user_nickname) REFERENCES users(nickname) ON DELETE CASCADE,
     FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE,

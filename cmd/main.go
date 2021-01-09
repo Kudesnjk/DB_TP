@@ -68,5 +68,5 @@ func main() {
 	threadDelivery.Configure(e)
 	postDelivery.Configure(e)
 	serviceDelivery.Configure(e)
-	e.Logger.Fatal(e.Start("127.0.0.1:5000"))
+	e.Logger.Fatal(e.Start("0.0.0.0:5000"))
 }

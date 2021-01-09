@@ -26,8 +26,8 @@ WORKDIR /home
 
 RUN /etc/init.d/postgresql start &&\
     psql --command "ALTER USER postgres WITH PASSWORD 'postgres';" &&\
-    createdb -E UTF8 forums &&\
-    psql --command "\i '/home/db.sql'" &&\
+    createdb -E UTF8 forum &&\
+    psql --command "\i '/home/schema.sql'" &&\
     /etc/init.d/postgresql stop
 
 RUN echo "listen_addresses='*'\n" >> /etc/postgresql/$PGVER/main/postgresql.conf
@@ -37,7 +37,7 @@ VOLUME ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql"]
 
 USER root
 
-COPY --from=build /go/src/Technopark_DB/technopark_db /usr/bin/technopark_db
+COPY --from=build /DB_TP/db_tp /usr/bin/db_tp
 
 EXPOSE 5000
 
