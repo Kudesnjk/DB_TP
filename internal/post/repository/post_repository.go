@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-
 	"github.com/lib/pq"
 
 	"github.com/Kudesnjk/DB_TP/internal/tools"
@@ -25,14 +24,17 @@ func NewPostRepository(db *sql.DB) post.PostRepository {
 func (pr *PostRepository) InsertPost(post *models.Post) error {
 	if post.Parent != 0 {
 		tx, err := pr.db.Begin()
-		err = tx.QueryRow("select thread_id from posts where thread_id = $1 and id = $2",
-			post.ThreadID,
-			post.Parent).
-			Scan(&post.ThreadID)
 
-		if err != nil {
-			tx.Rollback()
-			return tools.ErrorParentPostNotFound
+		if post.Parent != 0 {
+			err = tx.QueryRow("select thread_id from posts where thread_id = $1 and id = $2",
+				post.ThreadID,
+				post.Parent).
+				Scan(&post.ThreadID)
+
+			if err != nil {
+				tx.Rollback()
+				return tools.ErrorParentPostNotFound
+			}
 		}
 
 		err = tx.QueryRow(`with parent_path as (select path from posts where posts.id = $3 and thread_id = $5)

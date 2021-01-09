@@ -3,6 +3,7 @@ package delivery
 import (
 	"database/sql"
 	"encoding/json"
+	"github.com/lib/pq"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -201,20 +202,6 @@ func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 		now := time.Now().In(location).Round(time.Microsecond)
 
 		for _, post := range posts {
-			user, err := pd.userUsecase.GetUserInfo(post.Author)
-			if err != nil {
-				log.Println(err)
-				return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-					Message: tools.ConstInternalErrorMessage,
-				})
-			}
-
-			if user == nil {
-				return ctx.JSON(http.StatusNotFound, tools.BadResponse{
-					Message: tools.ConstSomeMessage,
-				})
-			}
-
 			post.Created = now
 			post.ThreadSlug = thread.Slug
 			post.ForumSlug = thread.ForumSlug
@@ -229,7 +216,12 @@ func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 			}
 
 			if err != nil {
-				log.Println(err)
+				if err.(*pq.Error).Code == "23503" {
+					return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+						Message: tools.ConstSomeMessage,
+					})
+				}
+
 				return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
 					Message: tools.ConstInternalErrorMessage,
 				})

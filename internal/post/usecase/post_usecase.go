@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"database/sql"
-
 	"github.com/Kudesnjk/DB_TP/internal/models"
 	"github.com/Kudesnjk/DB_TP/internal/post"
 	"github.com/Kudesnjk/DB_TP/internal/tools"
@@ -20,6 +19,7 @@ func NewPostUsecase(postRep post.PostRepository) post.PostUsecase {
 
 func (pu *PostUsecase) CreatePost(post *models.Post) error {
 	err := pu.postRep.InsertPost(post)
+
 	if err != nil {
 		return err
 	}

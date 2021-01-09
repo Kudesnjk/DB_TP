@@ -67,6 +67,7 @@ CREATE INDEX ON threads(forum_slug);
 CREATE INDEX ON votes(user_nickname);
 CREATE INDEX ON votes(thread_id);
 CREATE INDEX ON users(lower(nickname));
+CREATE INDEX ON posts(id, thread_id);
 
 CREATE
 OR REPLACE FUNCTION vote() RETURNS TRIGGER AS $vote$ BEGIN
