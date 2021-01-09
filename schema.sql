@@ -57,6 +57,15 @@ CREATE TABLE posts (
     FOREIGN KEY (forum_slug) REFERENCES forums(slug) ON DELETE CASCADE
 );
 
+CREATE INDEX ON posts(thread_id);
+CREATE INDEX ON posts(path);
+CREATE INDEX ON posts(user_nickname);
+CREATE INDEX ON posts(forum_slug);
+CREATE INDEX ON forums(user_nickname);
+CREATE INDEX ON threads(user_nickname);
+CREATE INDEX ON threads(forum_slug);
+CREATE INDEX ON votes(user_nickname);
+CREATE INDEX ON votes(thread_id);
 CREATE INDEX ON users(lower(nickname));
 
 CREATE
