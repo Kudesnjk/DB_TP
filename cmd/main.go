@@ -10,16 +10,19 @@ import (
 
 	forumRepository "github.com/Kudesnjk/DB_TP/internal/forum/repository"
 	postRepository "github.com/Kudesnjk/DB_TP/internal/post/repository"
+	serviceRepository "github.com/Kudesnjk/DB_TP/internal/service/repository"
 	threadRepository "github.com/Kudesnjk/DB_TP/internal/thread/repository"
 	userRepository "github.com/Kudesnjk/DB_TP/internal/user/repository"
 
 	forumUsecase "github.com/Kudesnjk/DB_TP/internal/forum/usecase"
 	postUsecase "github.com/Kudesnjk/DB_TP/internal/post/usecase"
+	serviceUsecase "github.com/Kudesnjk/DB_TP/internal/service/usecase"
 	threadUsecase "github.com/Kudesnjk/DB_TP/internal/thread/usecase"
 	userUsecase "github.com/Kudesnjk/DB_TP/internal/user/usecase"
 
 	forumDelivery "github.com/Kudesnjk/DB_TP/internal/forum/delivery"
 	postDelivery "github.com/Kudesnjk/DB_TP/internal/post/delivery"
+	serviceDelivery "github.com/Kudesnjk/DB_TP/internal/service/delivery"
 	threadDelivery "github.com/Kudesnjk/DB_TP/internal/thread/delivery"
 	userDelivery "github.com/Kudesnjk/DB_TP/internal/user/delivery"
 )
@@ -44,16 +47,19 @@ func main() {
 	forumRep := forumRepository.NewForumRepository(dbConn)
 	threadRep := threadRepository.NewThreadRepository(dbConn)
 	postRep := postRepository.NewPostRepository(dbConn)
+	serviceRep := serviceRepository.NewServiceRepository(dbConn)
 
 	userUsecase := userUsecase.NewUserUsecase(userRep)
 	forumUsecase := forumUsecase.NewForumUsecase(forumRep)
 	threadUsecase := threadUsecase.NewThreadUsecase(threadRep)
 	postUsecase := postUsecase.NewPostUsecase(postRep)
+	serviceUsecase := serviceUsecase.NewServiceUsecase(serviceRep)
 
 	userDelivery := userDelivery.NewUserDelivery(userUsecase)
 	forumDelivery := forumDelivery.NewForumDelivery(forumUsecase, userUsecase)
 	threadDelivery := threadDelivery.NewThreadDelivery(threadUsecase, userUsecase, forumUsecase)
-	postDelivery := postDelivery.NewPostDelivery(postUsecase, userUsecase, threadUsecase)
+	postDelivery := postDelivery.NewPostDelivery(postUsecase, userUsecase, threadUsecase, forumUsecase)
+	serviceDelivery := serviceDelivery.NewServiceDelivery(serviceUsecase)
 
 	e := echo.New()
 
@@ -61,5 +67,6 @@ func main() {
 	forumDelivery.Configure(e)
 	threadDelivery.Configure(e)
 	postDelivery.Configure(e)
+	serviceDelivery.Configure(e)
 	e.Logger.Fatal(e.Start("127.0.0.1:5000"))
 }

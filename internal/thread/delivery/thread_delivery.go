@@ -215,8 +215,18 @@ func (td *ThreadDelivery) UpdateThreadHandler() echo.HandlerFunc {
 			})
 		}
 
-		thread.Title = request.Title
-		thread.Message = request.Message
+		if request.Title == "" && request.Message == "" {
+			return ctx.JSON(http.StatusOK, thread)
+		}
+
+		if request.Title != "" {
+			thread.Title = request.Title
+		}
+
+		if request.Message != "" {
+			thread.Message = request.Message
+		}
+
 		err = td.threadUsecase.UpdateThread(thread)
 
 		if err != nil {

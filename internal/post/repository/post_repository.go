@@ -24,7 +24,18 @@ func NewPostRepository(db *sql.DB) post.PostRepository {
 
 func (pr *PostRepository) InsertPost(post *models.Post) error {
 	if post.Parent != 0 {
-		err := pr.db.QueryRow(`with parent_path as (select path from posts where posts.id = $3 and thread_id = $5)
+		tx, err := pr.db.Begin()
+		err = tx.QueryRow("select thread_id from posts where thread_id = $1 and id = $2",
+			post.ThreadID,
+			post.Parent).
+			Scan(&post.ThreadID)
+
+		if err != nil {
+			tx.Rollback()
+			return tools.ErrorParentPostNotFound
+		}
+
+		err = tx.QueryRow(`with parent_path as (select path from posts where posts.id = $3 and thread_id = $5)
 			insert into posts(id, message, is_edited, created, parent_id, user_nickname, thread_id, forum_slug, path)
 			values(default, $1, default, $2, $3, $4, $5, $6, (select path from parent_path)) returning id`,
 			post.Message,
@@ -37,7 +48,16 @@ func (pr *PostRepository) InsertPost(post *models.Post) error {
 				&post.ID,
 			)
 
-		return err
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	err := pr.db.QueryRow(`insert into posts 

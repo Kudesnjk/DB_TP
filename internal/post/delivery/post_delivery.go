@@ -7,7 +7,10 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/Kudesnjk/DB_TP/internal/forum"
 
 	"github.com/Kudesnjk/DB_TP/internal/models"
 
@@ -25,13 +28,18 @@ type PostDelivery struct {
 	postUsecase   post.PostUsecase
 	userUsecase   user.UserUsecase
 	threadUsecase thread.ThreadUsecase
+	forumUsecase  forum.ForumUsecase
 }
 
-func NewPostDelivery(postUsecase post.PostUsecase, userUsecase user.UserUsecase, threadUsecase thread.ThreadUsecase) *PostDelivery {
+func NewPostDelivery(postUsecase post.PostUsecase,
+	userUsecase user.UserUsecase,
+	threadUsecase thread.ThreadUsecase,
+	forumUsecase forum.ForumUsecase) *PostDelivery {
 	return &PostDelivery{
 		postUsecase:   postUsecase,
 		userUsecase:   userUsecase,
 		threadUsecase: threadUsecase,
+		forumUsecase:  forumUsecase,
 	}
 }
 
@@ -66,7 +74,26 @@ func (pd *PostDelivery) UpdatePostHandler() echo.HandlerFunc {
 			})
 		}
 
-		post := &models.Post{
+		post, err := pd.postUsecase.GetPost(uint64(postID))
+
+		if err != nil {
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		if post == nil {
+			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+				Message: tools.ConstNotFoundMessage,
+			})
+		}
+
+		if request.Message == "" || request.Message == post.Message {
+			return ctx.JSON(http.StatusOK, post)
+		}
+
+		post = &models.Post{
 			ID:      uint64(postID),
 			Message: request.Message,
 		}
@@ -151,10 +178,6 @@ func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 			})
 		}
 
-		if len(posts) == 0 {
-			return ctx.JSON(http.StatusCreated, posts)
-		}
-
 		thread, err := pd.threadUsecase.GetThreadInfo(slugOrID)
 
 		if err != nil {
@@ -170,14 +193,40 @@ func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 			})
 		}
 
+		if len(posts) == 0 {
+			return ctx.JSON(http.StatusCreated, posts)
+		}
+
 		now := time.Now()
 
 		for _, post := range posts {
+			user, err := pd.userUsecase.GetUserInfo(post.Author)
+			if err != nil {
+				log.Println(err)
+				return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+					Message: tools.ConstInternalErrorMessage,
+				})
+			}
+
+			if user == nil {
+				return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+					Message: tools.ConstSomeMessage,
+				})
+			}
+
 			post.Created = now
 			post.ThreadSlug = thread.Slug
 			post.ForumSlug = thread.ForumSlug
 			post.ThreadID = thread.ID
-			err := pd.postUsecase.CreatePost(post)
+
+			err = pd.postUsecase.CreatePost(post)
+
+			if err == tools.ErrorParentPostNotFound {
+				return ctx.JSON(http.StatusConflict, tools.BadResponse{
+					Message: tools.ConstSomeMessage,
+				})
+			}
+
 			if err != nil {
 				log.Println(err)
 				return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
@@ -223,8 +272,79 @@ func (pd *PostDelivery) GetPostDetailsHandler() echo.HandlerFunc {
 			})
 		}
 
+		relatedParams := strings.Split(ctx.QueryParam("related"), ",")
+		var userParam, threadParam, forumParam bool
+
+		for _, param := range relatedParams {
+			switch param {
+			case "user":
+				userParam = true
+			case "thread":
+				threadParam = true
+			case "forum":
+				forumParam = true
+			}
+		}
+
 		res := &Response{
 			Post: post,
+		}
+
+		if userParam {
+			user, err := pd.userUsecase.GetUserInfo(post.Author)
+
+			if err != nil {
+				log.Println(err)
+				return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+					Message: tools.ConstInternalErrorMessage,
+				})
+			}
+
+			if user == nil {
+				return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+					Message: tools.ConstNotFoundMessage,
+				})
+			}
+
+			res.User = user
+		}
+
+		if threadParam {
+			thread, err := pd.threadUsecase.GetThreadInfo(strconv.Itoa(int(post.ThreadID)))
+
+			if err != nil {
+				log.Println(err)
+				return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+					Message: tools.ConstInternalErrorMessage,
+				})
+			}
+
+			if thread == nil {
+				return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+					Message: tools.ConstNotFoundMessage,
+				})
+			}
+
+			res.Thread = thread
+		}
+
+		if forumParam {
+			forum, err := pd.forumUsecase.GetForumInfo(post.ForumSlug)
+
+			if err != nil {
+				log.Println(err)
+				return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+					Message: tools.ConstInternalErrorMessage,
+				})
+			}
+
+			if forum == nil {
+				return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+					Message: tools.ConstNotFoundMessage,
+				})
+			}
+
+			res.Forum = forum
 		}
 
 		return ctx.JSON(http.StatusOK, res)
