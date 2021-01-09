@@ -197,7 +197,8 @@ func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 			return ctx.JSON(http.StatusCreated, posts)
 		}
 
-		now := time.Now()
+		location, _ := time.LoadLocation("UTC")
+		now := time.Now().In(location).Round(time.Microsecond)
 
 		for _, post := range posts {
 			user, err := pd.userUsecase.GetUserInfo(post.Author)
