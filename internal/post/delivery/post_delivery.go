@@ -216,6 +216,7 @@ func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 				Message: tools.ConstInternalErrorMessage,
 			})
 		}
+
 		return ctx.JSON(http.StatusCreated, posts)
 	}
 }

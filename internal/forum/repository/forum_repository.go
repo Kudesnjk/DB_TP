@@ -31,7 +31,7 @@ func (fr *ForumRepository) InsertForum(forum *models.Forum) error {
 func (fr *ForumRepository) SelectByForumSlug(slug string) (*models.Forum, error) {
 	forum := &models.Forum{}
 
-	err := fr.db.QueryRow("select slug, title, user_nickname, threads_num, posts_num from forums where lower(slug) = lower($1)", slug).Scan(
+	err := fr.db.QueryRow("select slug, title, user_nickname, threads_num, posts_num from forums where slug = $1", slug).Scan(
 		&forum.Slug,
 		&forum.Title,
 		&forum.User,
@@ -47,14 +47,8 @@ func (fr *ForumRepository) SelectByForumSlug(slug string) (*models.Forum, error)
 }
 
 func (fr *ForumRepository) SelectForumUsers(slug string, qpm *tools.QPM) ([]*models.User, error) {
-	queryThreads := `select u.fullname, u.nickname, u.email, u.about from users u 
-	join threads t on u.nickname = t.user_nickname where lower(forum_slug) = lower($1)`
-
-	queryPosts := `select u.fullname, u.nickname, u.email, u.about from users u 
-	join posts p on u.nickname = p.user_nickname 
-	join threads t on p.thread_id = t.id where lower(t.forum_slug) = lower($1)`
-
-	query := qpm.UpdateForumUsersQuery(queryThreads, queryPosts)
+	query := `select u.fullname, u.nickname, u.email, u.about from users u join forums_users f on u.nickname = f.user_nickname where f.forum_slug = $1`
+	query = qpm.UpdateForumUsersQuery(query)
 
 	rows, err := fr.db.Query(query, slug)
 

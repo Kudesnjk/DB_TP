@@ -35,23 +35,16 @@ func NewQPM(ctx echo.Context) *QPM {
 	return qpm
 }
 
-func (qpm *QPM) UpdateForumUsersQuery(queryThreads, queryPosts string) string {
-	query := ""
-	unionStr := " union distinct "
-
+func (qpm *QPM) UpdateForumUsersQuery(query string) string {
 	if qpm.Desc {
 		if qpm.Since != "" {
-			queryThreads += fmt.Sprintf(" and nickname < '%s' ", qpm.Since)
-			queryPosts += fmt.Sprintf(" and nickname < '%s' ", qpm.Since)
+			query += fmt.Sprintf(" and nickname < '%s' ", qpm.Since)
 		}
-		query = queryThreads + unionStr + queryPosts
 		query += fmt.Sprintf(" order by nickname desc")
 	} else {
 		if qpm.Since != "" {
-			queryThreads += fmt.Sprintf(" and nickname > '%s' ", qpm.Since)
-			queryPosts += fmt.Sprintf(" and nickname > '%s' ", qpm.Since)
+			query += fmt.Sprintf(" and nickname > '%s' ", qpm.Since)
 		}
-		query = queryThreads + unionStr + queryPosts
 		query += fmt.Sprintf(" order by nickname ")
 	}
 
@@ -80,24 +73,24 @@ func (qpm *QPM) UpdatePostQuery(query string) string {
 	case "parent_tree":
 		if qpm.Desc {
 			if qpm.Since != "" {
-				query += fmt.Sprintf(" and path[1] in (select distinct path[1] from posts where path[1] < (select path[1] from posts where id = %s) and array_length(path, 1) = 1 and thread_id = $1 ", qpm.Since)
+				query += fmt.Sprintf(" and path[1] in (select distinct path[1] from posts where path[1] < (select path[1] from posts where id = %s) and array_length(path, 1) = 1 and thread_id = $1 order by path desc ", qpm.Since)
 			} else {
 				query += fmt.Sprintf(" and path[1] in (select distinct path[1] from posts where array_length(path, 1) = 1 and thread_id = $1 order by path[1] desc")
 			}
 			if qpm.Limit > 0 {
 				query += fmt.Sprintf(" limit %d ) ", qpm.Limit)
 			}
-			query += fmt.Sprintf(" order by posts.path[1] desc, posts.path, posts.id ")
+			query += fmt.Sprintf(" order by posts.path[1] desc, posts.path[2:], posts.created, posts.id ")
 		} else {
 			if qpm.Since != "" {
-				query += fmt.Sprintf(" and path[1] in (select distinct path[1] from posts where path[1] > (select path[1] from posts where id = %s) and array_length(path, 1) = 1 and thread_id = $1 ", qpm.Since)
+				query += fmt.Sprintf(" and path[1] in (select distinct path[1] from posts where path[1] > (select path[1] from posts where id = %s) and array_length(path, 1) = 1 and thread_id = $1 order by path ", qpm.Since)
 			} else {
 				query += fmt.Sprintf(" and path[1] in (select distinct path[1] from posts where array_length(path, 1) = 1 and thread_id = $1 order by path[1] ")
 			}
 			if qpm.Limit > 0 {
 				query += fmt.Sprintf(" limit %d ) ", qpm.Limit)
 			}
-			query += fmt.Sprintf(" order by posts.path[1], posts.path, posts.id ")
+			query += fmt.Sprintf(" order by posts.path[1], posts.path[2:], posts.created, posts.id ")
 		}
 		return query
 	default:

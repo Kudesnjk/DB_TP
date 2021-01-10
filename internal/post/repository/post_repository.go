@@ -52,7 +52,6 @@ func (pr *PostRepository) InsertPost(posts []*models.Post, ad *models.Additional
 	}
 
 	if err := tx.Commit(); err != nil {
-		fmt.Println("HEREEE", err)
 		return err
 	}
 
@@ -88,6 +87,15 @@ func (pr *PostRepository) SelectPosts(threadID uint64, qpm *tools.QPM) ([]*model
 		}
 
 		posts = append(posts, post)
+	}
+
+	if len(posts) > 0 && posts[0].ID == 813277 {
+		fmt.Println()
+		fmt.Println(qpm.Sort)
+		fmt.Println(posts[0])
+		fmt.Println(posts[0].ThreadID)
+		fmt.Println(qpm)
+		fmt.Println(query)
 	}
 
 	return posts, nil

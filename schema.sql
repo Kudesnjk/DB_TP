@@ -5,115 +5,145 @@ CREATE SCHEMA public;
 
 CREATE EXTENSION IF NOT EXISTS citext;
 
-CREATE UNLOGGED TABLE users (
-    id serial,
+CREATE UNLOGGED TABLE users
+(
     nickname citext COLLATE "C" PRIMARY KEY,
-    email citext UNIQUE NOT NULL,
-    fullname text NOT NULL,
-    about text
+    email    citext UNIQUE NOT NULL,
+    fullname text          NOT NULL,
+    about    text
 );
 
-CREATE UNLOGGED  TABLE forums (
-    slug citext PRIMARY KEY,
-    title text NOT NULL,
+CREATE UNLOGGED TABLE forums
+(
+    slug          citext PRIMARY KEY,
+    title         text   NOT NULL,
     user_nickname citext NOT NULL,
-    threads_num int NOT NULL DEFAULT 0,
-    posts_num int NOT NULL DEFAULT 0,
-    FOREIGN KEY (user_nickname) REFERENCES users(nickname) ON DELETE CASCADE
+    threads_num   int    NOT NULL DEFAULT 0,
+    posts_num     int    NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_nickname) REFERENCES users (nickname) ON DELETE CASCADE
 );
 
-CREATE UNLOGGED  TABLE threads (
-    id serial PRIMARY KEY,
-    slug citext NOT NULL,
-    title text NOT NULL,
-    message text NOT NULL,
-    created timestamptz NOT NULL DEFAULT NOW(),
-    user_nickname citext NOT NULL,
-    forum_slug citext NOT NULL,
-    votes int NOT NULL DEFAULT 0,
-    FOREIGN KEY (user_nickname) REFERENCES users(nickname) ON DELETE CASCADE,
-    FOREIGN KEY (forum_slug) REFERENCES forums(slug) ON DELETE CASCADE
+CREATE UNLOGGED TABLE threads
+(
+    id            serial PRIMARY KEY,
+    slug          citext      NOT NULL,
+    title         text        NOT NULL,
+    message       text        NOT NULL,
+    created       timestamptz NOT NULL DEFAULT NOW(),
+    user_nickname citext      NOT NULL,
+    forum_slug    citext      NOT NULL,
+    votes         int         NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_nickname) REFERENCES users (nickname) ON DELETE CASCADE,
+    FOREIGN KEY (forum_slug) REFERENCES forums (slug) ON DELETE CASCADE
 );
 
-CREATE UNLOGGED  TABLE votes (
+CREATE UNLOGGED TABLE votes
+(
     user_nickname citext NOT NULL REFERENCES users (nickname) ON DELETE CASCADE,
-    thread_id int NOT NULL REFERENCES threads (id) ON DELETE CASCADE,
-    voice int NOT NULL,
-    PRIMARY KEY(user_nickname, thread_id)
+    thread_id     int    NOT NULL REFERENCES threads (id) ON DELETE CASCADE,
+    voice         int    NOT NULL,
+    PRIMARY KEY (user_nickname, thread_id)
 );
 
-CREATE UNLOGGED  TABLE posts (
-    id serial PRIMARY KEY,
-    message text NOT NULL,
-    is_edited boolean NOT NULL DEFAULT false,
-    created timestamptz NOT NULL DEFAULT NOW(),
-    parent_id int NOT NULL DEFAULT 0,
-    path integer [] NOT NULL DEFAULT '{}',
+CREATE UNLOGGED TABLE posts
+(
+    id            serial PRIMARY KEY,
+    message       text        NOT NULL,
+    is_edited     boolean     NOT NULL DEFAULT false,
+    created       timestamptz NOT NULL DEFAULT NOW(),
+    parent_id     int         NOT NULL DEFAULT 0,
+    path          integer[]   NOT NULL DEFAULT '{}',
+    user_nickname citext      NOT NULL,
+    forum_slug    citext      NOT NULL,
+    thread_id     int         NOT NULL,
+    FOREIGN KEY (user_nickname) REFERENCES users (nickname) ON DELETE CASCADE,
+    FOREIGN KEY (thread_id) REFERENCES threads (id) ON DELETE CASCADE,
+    FOREIGN KEY (forum_slug) REFERENCES forums (slug) ON DELETE CASCADE
+);
+
+CREATE UNLOGGED TABLE forums_users
+(
     user_nickname citext NOT NULL,
-    forum_slug citext NOT NULL,
-    thread_id int NOT NULL,
-    FOREIGN KEY (user_nickname) REFERENCES users(nickname) ON DELETE CASCADE,
-    FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE,
-    FOREIGN KEY (forum_slug) REFERENCES forums(slug) ON DELETE CASCADE
+    forum_slug    citext NOT NULL,
+    FOREIGN KEY (user_nickname) REFERENCES users (nickname) ON DELETE CASCADE,
+    FOREIGN KEY (forum_slug) REFERENCES forums (slug) ON DELETE CASCADE,
+    PRIMARY KEY (user_nickname, forum_slug)
 );
 
-CREATE INDEX ON posts(thread_id);
-CREATE INDEX ON posts(path);
-CREATE INDEX ON posts(user_nickname);
-CREATE INDEX ON posts(forum_slug);
-CREATE INDEX ON posts(id, thread_id);
+CREATE INDEX ON users (nickname, email);
+CREATE INDEX ON users USING hash (email);
+CREATE INDEX ON users USING hash (nickname);
+CREATE INDEX ON users (nickname, email, fullname, about);
 
-CREATE INDEX ON forums(user_nickname);
+CREATE INDEX ON forums_users (forum_slug);
+CREATE INDEX ON forums_users (user_nickname, forum_slug);
+CREATE INDEX ON forums_users (user_nickname);
 
-CREATE INDEX ON votes(user_nickname);
-CREATE INDEX ON votes(thread_id);
+CREATE INDEX ON posts (thread_id);
+CREATE INDEX ON posts (path);
+CREATE INDEX ON posts (user_nickname);
+CREATE INDEX ON posts (forum_slug);
+CREATE INDEX ON posts (id, thread_id);
 
-CREATE INDEX ON threads(user_nickname);
-CREATE INDEX ON threads(forum_slug);
-CREATE INDEX ON threads(id);
-CREATE INDEX ON threads(slug);
-CREATE INDEX ON threads(id, slug, title, message, created, user_nickname, forum_slug, votes) ;
+CREATE INDEX ON forums (user_nickname);
+CREATE INDEX ON forums USING hash (slug);
+
+CREATE INDEX ON votes (user_nickname);
+CREATE INDEX ON votes (thread_id);
+
+CREATE INDEX ON threads (user_nickname);
+CREATE INDEX ON threads (forum_slug);
+CREATE INDEX ON threads (id);
+CREATE INDEX ON threads USING hash (slug);
+CREATE INDEX ON threads (id, slug, title, message, created, user_nickname, forum_slug, votes);
 
 CREATE
-OR REPLACE FUNCTION vote() RETURNS TRIGGER AS $vote$ BEGIN
-UPDATE
-    threads
-SET
-    votes = votes + new.voice
-WHERE
-    id = new.thread_id;
-RETURN new;
+    OR REPLACE FUNCTION vote() RETURNS TRIGGER AS
+$vote$
+BEGIN
+    UPDATE
+        threads
+    SET votes = votes + new.voice
+    WHERE id = new.thread_id;
+    RETURN new;
 END;
 $vote$ LANGUAGE plpgsql;
 
 CREATE
-OR REPLACE FUNCTION revote() RETURNS TRIGGER AS $revote$ BEGIN IF (old.voice != new.voice) THEN
-UPDATE
-    threads
-SET
-    votes = votes + new.voice - old.voice
-WHERE
-    id = new.thread_id;
+    OR REPLACE FUNCTION revote() RETURNS TRIGGER AS
+$revote$
+BEGIN
+    IF (old.voice != new.voice) THEN
+        UPDATE
+            threads
+        SET votes = votes + new.voice - old.voice
+        WHERE id = new.thread_id;
 
-END IF;
-RETURN new;
+    END IF;
+    RETURN new;
 END;
 $revote$ LANGUAGE plpgsql;
 
 CREATE TRIGGER vote_count
-AFTER
-INSERT
-    ON votes FOR EACH ROW EXECUTE PROCEDURE vote();
+    AFTER
+        INSERT
+    ON votes
+    FOR EACH ROW
+EXECUTE PROCEDURE vote();
 
-CREATE TRIGGER revote_count BEFORE
-UPDATE
-    ON votes FOR EACH ROW EXECUTE PROCEDURE revote();
+CREATE TRIGGER revote_count
+    BEFORE
+        UPDATE
+    ON votes
+    FOR EACH ROW
+EXECUTE PROCEDURE revote();
 
 CREATE FUNCTION trigger_post_before_insert()
-    RETURNS trigger AS $trigger_post_before_insert$
+    RETURNS trigger AS
+$trigger_post_before_insert$
 BEGIN
     IF NEW.path[1] <> 0 THEN
-        NEW.path := (SELECT path FROM posts WHERE id = NEW.path[1] AND thread_id = NEW.thread_id) || ARRAY[NEW.id];
+        NEW.path := (SELECT path FROM posts WHERE id = NEW.path[1] AND thread_id = NEW.thread_id) || ARRAY [NEW.id];
         IF array_length(NEW.path, 1) = 1 THEN
             RAISE 'Parent post exception' USING ERRCODE = '12345';
         END IF;
@@ -124,7 +154,8 @@ BEGIN
 END;
 $trigger_post_before_insert$ LANGUAGE plpgsql;
 
-CREATE TRIGGER before_insert BEFORE INSERT
+CREATE TRIGGER before_insert
+    BEFORE INSERT
     ON posts
     FOR EACH ROW
 EXECUTE PROCEDURE trigger_post_before_insert();
@@ -149,9 +180,34 @@ END;
 $forum_thread_count$ LANGUAGE plpgsql;
 
 CREATE TRIGGER forum_post_count
-    AFTER INSERT ON posts
+    AFTER INSERT
+    ON posts
     FOR EACH ROW
 EXECUTE PROCEDURE forum_posts_count();
 
 CREATE TRIGGER forum_thread_count
-AFTER INSERT ON threads FOR EACH ROW EXECUTE PROCEDURE forum_thread_count();
+    AFTER INSERT
+    ON threads
+    FOR EACH ROW
+EXECUTE PROCEDURE forum_thread_count();
+
+CREATE OR REPLACE FUNCTION forum_user_count()
+    RETURNS trigger AS
+$forum_user_count$
+BEGIN
+    insert into forums_users values (NEW.user_nickname, NEW.forum_slug) ON CONFLICT DO NOTHING;
+    return new;
+END;
+$forum_user_count$ LANGUAGE plpgsql;
+
+CREATE TRIGGER forum_user_count_thread
+    AFTER INSERT
+    ON threads
+    FOR EACH ROW
+EXECUTE PROCEDURE forum_user_count();
+
+CREATE TRIGGER forum_user_count_post
+    AFTER INSERT
+    ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE forum_user_count();
