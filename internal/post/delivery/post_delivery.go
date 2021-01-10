@@ -2,14 +2,13 @@ package delivery
 
 import (
 	"database/sql"
-	"encoding/json"
-	"github.com/lib/pq"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/lib/pq"
 
 	"github.com/Kudesnjk/DB_TP/internal/forum"
 
@@ -151,27 +150,15 @@ func (pd *PostDelivery) GetPostsHandler() echo.HandlerFunc {
 	}
 }
 
+//easyjson:json
+type PostsList []*models.Post
+
 func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		slugOrID := ctx.Param("slug_or_id")
-		posts := make([]*models.Post, 0)
 
-		result, err := ioutil.ReadAll(ctx.Request().Body)
-		if err != nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
-		err = json.Unmarshal(result, &posts)
-		if err != nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
+		var posts PostsList
+		err := ctx.Bind(posts)
 		if err != nil {
 			log.Println(err)
 			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
@@ -201,9 +188,9 @@ func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 		location, _ := time.LoadLocation("UTC")
 		now := time.Now().In(location).Round(time.Microsecond)
 		additionalPostData := &models.AdditionalPostData{
-			Created: now,
-			ThreadID: thread.ID,
-			ForumSlug: thread.ForumSlug,
+			Created:    now,
+			ThreadID:   thread.ID,
+			ForumSlug:  thread.ForumSlug,
 			ThreadSlug: thread.Slug,
 		}
 
