@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/Kudesnjk/DB_TP/internal/tools"
 	"log"
 
 	"github.com/labstack/echo/v4"
@@ -63,7 +62,7 @@ func main() {
 	serviceDelivery := serviceDelivery.NewServiceDelivery(serviceUsecase)
 
 	e := echo.New()
-	e.Use(tools.TimingLogMiddleware)
+	//e.Use(tools.TimingLogMiddleware)
 
 	userDelivery.Configure(e)
 	forumDelivery.Configure(e)
