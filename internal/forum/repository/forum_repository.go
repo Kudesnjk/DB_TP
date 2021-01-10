@@ -47,7 +47,7 @@ func (fr *ForumRepository) SelectByForumSlug(slug string) (*models.Forum, error)
 }
 
 func (fr *ForumRepository) SelectForumUsers(slug string, qpm *tools.QPM) ([]*models.User, error) {
-	query := `select u.fullname, u.nickname, u.email, u.about from users u join forums_users f on u.nickname = f.user_nickname where f.forum_slug = $1`
+	query := `select u.nickname, u.email, u.fullname, u.about from users u join forums_users f on u.nickname = f.user_nickname where f.forum_slug = $1`
 	query = qpm.UpdateForumUsersQuery(query)
 
 	rows, err := fr.db.Query(query, slug)
@@ -61,9 +61,9 @@ func (fr *ForumRepository) SelectForumUsers(slug string, qpm *tools.QPM) ([]*mod
 	for rows.Next() {
 		user := &models.User{}
 		if err := rows.Scan(
-			&user.Fullname,
 			&user.Nickname,
 			&user.Email,
+			&user.Fullname,
 			&user.About,
 		); err != nil {
 			return nil, err

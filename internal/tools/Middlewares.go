@@ -16,7 +16,7 @@ func TimingLogMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		log.Println()
 		log.Println("Worktime: ", end.Sub(start))
-		log.Println("Path: ", ctx.Request())
+		log.Println("Path: ", ctx.Request().RequestURI)
 
 		return err
 	}

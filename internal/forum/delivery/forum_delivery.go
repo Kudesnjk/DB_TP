@@ -35,7 +35,6 @@ func (fd *ForumDelivery) GetForumUsersHandler() echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		slug := ctx.Param("slug")
 		forum, err := fd.forumUsecase.GetForumInfo(slug)
-		qpm := tools.NewQPM(ctx)
 
 		if err != nil {
 			log.Println(err)
@@ -50,6 +49,7 @@ func (fd *ForumDelivery) GetForumUsersHandler() echo.HandlerFunc {
 			})
 		}
 
+		qpm := tools.NewQPM(ctx)
 		users, err := fd.forumUsecase.GetForumUsers(slug, qpm)
 		if err != nil {
 			log.Println(err)

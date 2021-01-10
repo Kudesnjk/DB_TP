@@ -76,7 +76,7 @@ CREATE INDEX ON users USING hash (nickname);
 CREATE INDEX ON users (nickname, email, fullname, about);
 
 CREATE INDEX ON forums_users (forum_slug);
-CREATE INDEX ON forums_users (user_nickname, forum_slug);
+CREATE INDEX ON forums_users (user_nickname, forum_slug) ;
 CREATE INDEX ON forums_users (user_nickname);
 
 CREATE INDEX ON posts (thread_id);
@@ -84,9 +84,15 @@ CREATE INDEX ON posts (path);
 CREATE INDEX ON posts (user_nickname);
 CREATE INDEX ON posts (forum_slug);
 CREATE INDEX ON posts (id, thread_id);
+CREATE INDEX ON posts (path, created, id);
+CREATE INDEX ON posts (path, id);
+CREATE INDEX ON posts (created, id);
+CREATE INDEX ON posts (array_length(path, 1), thread_id);
+CREATE INDEX ON posts (id, array_length(path, 1), thread_id);
 
 CREATE INDEX ON forums (user_nickname);
 CREATE INDEX ON forums USING hash (slug);
+CREATE INDEX ON forums (slug, title, user_nickname, threads_num, posts_num);
 
 CREATE INDEX ON votes (user_nickname);
 CREATE INDEX ON votes (thread_id);
