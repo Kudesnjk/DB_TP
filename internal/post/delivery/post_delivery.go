@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"database/sql"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -158,7 +159,8 @@ func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 		slugOrID := ctx.Param("slug_or_id")
 
 		var posts PostsList
-		err := ctx.Bind(posts)
+		body, _ := ioutil.ReadAll(ctx.Request().Body)
+		err := posts.UnmarshalJSON(body)
 		if err != nil {
 			log.Println(err)
 			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
