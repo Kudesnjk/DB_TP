@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"strconv"
 
 	"github.com/Kudesnjk/DB_TP/internal/tools"
 
@@ -35,8 +36,29 @@ func (tr *ThreadRepository) InsertThread(thread *models.Thread) error {
 func (tr *ThreadRepository) SelectBySlugOrID(slugOrID string) (*models.Thread, error) {
 	thread := &models.Thread{}
 
-	err := tr.db.QueryRow("select id, slug, title, message, created, user_nickname, forum_slug, votes from threads where id::varchar = $1 or lower(slug) = lower($1)",
-		slugOrID).Scan(
+	id, isSlug := strconv.Atoi(slugOrID)
+
+	if isSlug != nil {
+		err := tr.db.QueryRow("select id, slug, title, message, created, user_nickname, forum_slug, votes from threads where slug = $1",
+			slugOrID).Scan(
+			&thread.ID,
+			&thread.Slug,
+			&thread.Title,
+			&thread.Message,
+			&thread.Created,
+			&thread.Author,
+			&thread.ForumSlug,
+			&thread.Votes)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return thread, nil
+	}
+
+	err := tr.db.QueryRow("select id, slug, title, message, created, user_nickname, forum_slug, votes from threads where id = $1",
+		id).Scan(
 		&thread.ID,
 		&thread.Slug,
 		&thread.Title,
@@ -54,7 +76,7 @@ func (tr *ThreadRepository) SelectBySlugOrID(slugOrID string) (*models.Thread, e
 }
 
 func (tr *ThreadRepository) SelectThreadsByForumSlug(slug string, qpm *tools.QPM) ([]*models.Thread, error) {
-	query := "select id, slug, title, message, created, user_nickname, forum_slug, votes, slug from threads where lower(forum_slug) = lower($1)"
+	query := "select id, slug, title, message, created, user_nickname, forum_slug, votes, slug from threads where forum_slug = $1"
 	query = qpm.UpdateThreadQuery(query)
 
 	rows, err := tr.db.Query(query,

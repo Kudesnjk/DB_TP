@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS citext;
 CREATE UNLOGGED TABLE users (
     id serial,
     nickname citext COLLATE "C" PRIMARY KEY,
-    email text UNIQUE NOT NULL,
+    email citext UNIQUE NOT NULL,
     fullname text NOT NULL,
     about text
 );
@@ -24,7 +24,7 @@ CREATE UNLOGGED  TABLE forums (
 
 CREATE UNLOGGED  TABLE threads (
     id serial PRIMARY KEY,
-    slug text NOT NULL,
+    slug citext NOT NULL,
     title text NOT NULL,
     message text NOT NULL,
     created timestamptz NOT NULL DEFAULT NOW(),
@@ -62,13 +62,17 @@ CREATE INDEX ON posts(path);
 CREATE INDEX ON posts(user_nickname);
 CREATE INDEX ON posts(forum_slug);
 CREATE INDEX ON posts(id, thread_id);
+
 CREATE INDEX ON forums(user_nickname);
-CREATE INDEX ON threads(user_nickname);
-CREATE INDEX ON threads(forum_slug);
+
 CREATE INDEX ON votes(user_nickname);
 CREATE INDEX ON votes(thread_id);
-CREATE INDEX ON users(lower(nickname));
-CREATE INDEX ON threads(lower(slug));
+
+CREATE INDEX ON threads(user_nickname);
+CREATE INDEX ON threads(forum_slug);
+CREATE INDEX ON threads(id);
+CREATE INDEX ON threads(slug);
+CREATE INDEX ON threads(id, slug, title, message, created, user_nickname, forum_slug, votes) ;
 
 CREATE
 OR REPLACE FUNCTION vote() RETURNS TRIGGER AS $vote$ BEGIN
