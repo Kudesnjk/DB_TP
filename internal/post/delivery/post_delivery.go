@@ -200,34 +200,33 @@ func (pd *PostDelivery) CreatePostHandler() echo.HandlerFunc {
 
 		location, _ := time.LoadLocation("UTC")
 		now := time.Now().In(location).Round(time.Microsecond)
+		additionalPostData := &models.AdditionalPostData{
+			Created: now,
+			ThreadID: thread.ID,
+			ForumSlug: thread.ForumSlug,
+			ThreadSlug: thread.Slug,
+		}
 
-		for _, post := range posts {
-			post.Created = now
-			post.ThreadSlug = thread.Slug
-			post.ForumSlug = thread.ForumSlug
-			post.ThreadID = thread.ID
+		err = pd.postUsecase.CreatePost(posts, additionalPostData)
 
-			err = pd.postUsecase.CreatePost(post)
-
-			if err == tools.ErrorParentPostNotFound {
+		if err != nil {
+			if err.(*pq.Error).Code == tools.ConstParentNotFound {
 				return ctx.JSON(http.StatusConflict, tools.BadResponse{
 					Message: tools.ConstSomeMessage,
 				})
 			}
 
-			if err != nil {
-				if err.(*pq.Error).Code == "23503" {
-					return ctx.JSON(http.StatusNotFound, tools.BadResponse{
-						Message: tools.ConstSomeMessage,
-					})
-				}
-
-				return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-					Message: tools.ConstInternalErrorMessage,
+			if err.(*pq.Error).Code == tools.ConstUserNotFoundError {
+				return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+					Message: tools.ConstSomeMessage,
 				})
 			}
-		}
 
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
 		return ctx.JSON(http.StatusCreated, posts)
 	}
 }

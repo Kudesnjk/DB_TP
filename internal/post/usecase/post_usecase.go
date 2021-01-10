@@ -17,8 +17,8 @@ func NewPostUsecase(postRep post.PostRepository) post.PostUsecase {
 	}
 }
 
-func (pu *PostUsecase) CreatePost(post *models.Post) error {
-	err := pu.postRep.InsertPost(post)
+func (pu *PostUsecase) CreatePost(posts []*models.Post, ad *models.AdditionalPostData) error {
+	err := pu.postRep.InsertPost(posts, ad)
 
 	if err != nil {
 		return err

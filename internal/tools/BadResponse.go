@@ -1,18 +1,11 @@
 package tools
 
-import (
-	"errors"
-)
-
 const (
 	ConstInternalErrorMessage = "internal server error"
 	ConstNotFoundMessage      = "not found message"
 	ConstSomeMessage          = "some message"
-)
-
-var (
-	ErrorUserNotFound       = errors.New("User not found")
-	ErrorParentPostNotFound = errors.New("Error with parent post")
+	ConstUserNotFoundError    = "23503"
+	ConstParentNotFound       = "12345"
 )
 
 type BadResponse struct {

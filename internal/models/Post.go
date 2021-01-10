@@ -16,3 +16,10 @@ type Post struct {
 	Path       []int64   `json:"-"`
 	ThreadSlug string    `json:"-"`
 }
+
+type AdditionalPostData struct {
+	Created    time.Time
+	ThreadSlug string
+	ForumSlug  string
+	ThreadID   uint64
+}

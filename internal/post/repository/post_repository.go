@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/lib/pq"
 
 	"github.com/Kudesnjk/DB_TP/internal/tools"
@@ -21,31 +22,20 @@ func NewPostRepository(db *sql.DB) post.PostRepository {
 	}
 }
 
-func (pr *PostRepository) InsertPost(post *models.Post) error {
-	if post.Parent != 0 {
-		tx, err := pr.db.Begin()
+func (pr *PostRepository) InsertPost(posts []*models.Post, ad *models.AdditionalPostData) error {
+	tx, err := pr.db.Begin()
+	queryStr := `insert into posts(id, message, is_edited, created, parent_id, user_nickname, thread_id, forum_slug, path)
+			values(default, $1, default, $2, $3, $4, $5, $6, $7) returning id`
 
-		if post.Parent != 0 {
-			err = tx.QueryRow("select thread_id from posts where thread_id = $1 and id = $2",
-				post.ThreadID,
-				post.Parent).
-				Scan(&post.ThreadID)
-
-			if err != nil {
-				tx.Rollback()
-				return tools.ErrorParentPostNotFound
-			}
-		}
-
-		err = tx.QueryRow(`with parent_path as (select path from posts where posts.id = $3 and thread_id = $5)
-			insert into posts(id, message, is_edited, created, parent_id, user_nickname, thread_id, forum_slug, path)
-			values(default, $1, default, $2, $3, $4, $5, $6, (select path from parent_path)) returning id`,
+	for _, post := range posts {
+		err = tx.QueryRow(queryStr,
 			post.Message,
-			post.Created,
+			ad.Created,
 			post.Parent,
 			post.Author,
-			post.ThreadID,
-			post.ForumSlug).
+			ad.ThreadID,
+			ad.ForumSlug,
+			pq.Array([]int64{int64(post.Parent)})).
 			Scan(
 				&post.ID,
 			)
@@ -55,26 +45,18 @@ func (pr *PostRepository) InsertPost(post *models.Post) error {
 			return err
 		}
 
-		if err := tx.Commit(); err != nil {
-			return err
-		}
-
-		return nil
+		post.Created = ad.Created
+		post.ThreadID = ad.ThreadID
+		post.ForumSlug = ad.ForumSlug
+		post.ThreadSlug = ad.ThreadSlug
 	}
 
-	err := pr.db.QueryRow(`insert into posts 
-	(id, message, is_edited, created, parent_id, user_nickname, thread_id, forum_slug, path) 
-	values(default, $1, default, $2, $3, $4, $5, $6, default) returning id`,
-		post.Message,
-		post.Created,
-		post.Parent,
-		post.Author,
-		post.ThreadID,
-		post.ForumSlug).
-		Scan(
-			&post.ID,
-		)
-	return err
+	if err := tx.Commit(); err != nil {
+		fmt.Println("HEREEE", err)
+		return err
+	}
+
+	return nil
 }
 
 func (pr *PostRepository) SelectPosts(threadID uint64, qpm *tools.QPM) ([]*models.Post, error) {

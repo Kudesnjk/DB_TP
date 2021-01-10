@@ -5,7 +5,7 @@ CREATE SCHEMA public;
 
 CREATE EXTENSION IF NOT EXISTS citext;
 
-CREATE TABLE users (
+CREATE UNLOGGED TABLE users (
     id serial,
     nickname citext COLLATE "C" PRIMARY KEY,
     email text UNIQUE NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE users (
     about text
 );
 
-CREATE TABLE forums (
+CREATE UNLOGGED  TABLE forums (
     slug citext PRIMARY KEY,
     title text NOT NULL,
     user_nickname citext NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE forums (
     FOREIGN KEY (user_nickname) REFERENCES users(nickname) ON DELETE CASCADE
 );
 
-CREATE TABLE threads (
+CREATE UNLOGGED  TABLE threads (
     id serial PRIMARY KEY,
     slug text NOT NULL,
     title text NOT NULL,
@@ -35,14 +35,14 @@ CREATE TABLE threads (
     FOREIGN KEY (forum_slug) REFERENCES forums(slug) ON DELETE CASCADE
 );
 
-CREATE TABLE votes (
+CREATE UNLOGGED  TABLE votes (
     user_nickname citext NOT NULL REFERENCES users (nickname) ON DELETE CASCADE,
     thread_id int NOT NULL REFERENCES threads (id) ON DELETE CASCADE,
     voice int NOT NULL,
     PRIMARY KEY(user_nickname, thread_id)
 );
 
-CREATE TABLE posts (
+CREATE UNLOGGED  TABLE posts (
     id serial PRIMARY KEY,
     message text NOT NULL,
     is_edited boolean NOT NULL DEFAULT false,
@@ -61,13 +61,14 @@ CREATE INDEX ON posts(thread_id);
 CREATE INDEX ON posts(path);
 CREATE INDEX ON posts(user_nickname);
 CREATE INDEX ON posts(forum_slug);
+CREATE INDEX ON posts(id, thread_id);
 CREATE INDEX ON forums(user_nickname);
 CREATE INDEX ON threads(user_nickname);
 CREATE INDEX ON threads(forum_slug);
 CREATE INDEX ON votes(user_nickname);
 CREATE INDEX ON votes(thread_id);
 CREATE INDEX ON users(lower(nickname));
-CREATE INDEX ON posts(id, thread_id);
+CREATE INDEX ON threads(lower(slug));
 
 CREATE
 OR REPLACE FUNCTION vote() RETURNS TRIGGER AS $vote$ BEGIN
@@ -104,14 +105,26 @@ CREATE TRIGGER revote_count BEFORE
 UPDATE
     ON votes FOR EACH ROW EXECUTE PROCEDURE revote();
 
-CREATE
-OR REPLACE FUNCTION parent_path() RETURNS trigger LANGUAGE plpgsql AS $func$ BEGIN NEW.path := NEW.path || ARRAY [NEW.id];
-RETURN NEW;
-END $func$;
+CREATE FUNCTION trigger_post_before_insert()
+    RETURNS trigger AS $trigger_post_before_insert$
+BEGIN
+    IF NEW.path[1] <> 0 THEN
+        NEW.path := (SELECT path FROM posts WHERE id = NEW.path[1] AND thread_id = NEW.thread_id) || ARRAY[NEW.id];
+        IF array_length(NEW.path, 1) = 1 THEN
+            RAISE 'Parent post exception' USING ERRCODE = '12345';
+        END IF;
+    ELSE
+        NEW.path[1] := NEW.id;
+    END IF;
+    RETURN NEW;
+END;
+$trigger_post_before_insert$ LANGUAGE plpgsql;
 
-CREATE TRIGGER parent_path_count BEFORE
-INSERT
-    ON posts FOR EACH ROW EXECUTE PROCEDURE parent_path();
+CREATE TRIGGER before_insert BEFORE INSERT
+    ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE trigger_post_before_insert();
+
 
 CREATE OR REPLACE FUNCTION forum_posts_count()
     RETURNS trigger AS

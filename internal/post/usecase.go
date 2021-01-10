@@ -6,7 +6,7 @@ import (
 )
 
 type PostUsecase interface {
-	CreatePost(post *models.Post) error
+	CreatePost(posts []*models.Post, ad *models.AdditionalPostData) error
 	GetPosts(threadID uint64, qpm *tools.QPM) ([]*models.Post, error)
 	GetPost(postID uint64) (*models.Post, error)
 	UpdatePost(post *models.Post) error

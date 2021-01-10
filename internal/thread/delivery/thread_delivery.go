@@ -1,8 +1,10 @@
 package delivery
 
 import (
+	"github.com/lib/pq"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/Kudesnjk/DB_TP/internal/models"
@@ -257,7 +259,46 @@ func (td *ThreadDelivery) VoteThreadHandler() echo.HandlerFunc {
 			})
 		}
 
-		thread, err := td.threadUsecase.GetThreadInfo(slugOrID)
+		threadID, isSlug := strconv.Atoi(slugOrID)
+		var threadSluged *models.Thread
+
+		if isSlug != nil {
+			threadSluged, err = td.threadUsecase.GetThreadInfo(slugOrID)
+
+			if err != nil {
+				log.Println(err)
+				return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+					Message: tools.ConstInternalErrorMessage,
+				})
+			}
+
+			if threadSluged == nil {
+				return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+					Message: tools.ConstNotFoundMessage,
+				})
+			}
+		}
+
+		if isSlug != nil {
+			err = td.threadUsecase.VoteThread(int(threadSluged.ID), request.Nickname, request.Voice)
+		} else {
+			err = td.threadUsecase.VoteThread(threadID, request.Nickname, request.Voice)
+		}
+
+		if err != nil {
+			if err.(*pq.Error).Code == tools.ConstUserNotFoundError {
+				return ctx.JSON(http.StatusNotFound, tools.BadResponse{
+					Message: tools.ConstSomeMessage,
+				})
+			}
+
+			log.Println(err)
+			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
+				Message: tools.ConstInternalErrorMessage,
+			})
+		}
+
+		threadSluged, err = td.threadUsecase.GetThreadInfo(slugOrID)
 
 		if err != nil {
 			log.Println(err)
@@ -266,51 +307,12 @@ func (td *ThreadDelivery) VoteThreadHandler() echo.HandlerFunc {
 			})
 		}
 
-		if thread == nil {
+		if threadSluged == nil {
 			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
 				Message: tools.ConstNotFoundMessage,
 			})
 		}
 
-		user, err := td.userUsecase.GetUserInfo(request.Nickname)
-
-		if err != nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
-		if user == nil {
-			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
-				Message: tools.ConstNotFoundMessage,
-			})
-		}
-
-		err = td.threadUsecase.VoteThread(int(thread.ID), request.Nickname, request.Voice)
-
-		if err != nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
-		thread, err = td.threadUsecase.GetThreadInfo(slugOrID)
-
-		if err != nil {
-			log.Println(err)
-			return ctx.JSON(http.StatusInternalServerError, tools.BadResponse{
-				Message: tools.ConstInternalErrorMessage,
-			})
-		}
-
-		if thread == nil {
-			return ctx.JSON(http.StatusNotFound, tools.BadResponse{
-				Message: tools.ConstNotFoundMessage,
-			})
-		}
-
-		return ctx.JSON(http.StatusOK, thread)
+		return ctx.JSON(http.StatusOK, threadSluged)
 	}
 }
