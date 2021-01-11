@@ -76,7 +76,6 @@ CREATE INDEX ON users USING hash (nickname) include (nickname, email, fullname, 
 CREATE INDEX ON forums_users (forum_slug);
 CREATE INDEX forums_users_index ON forums_users (user_nickname, forum_slug) ;
 CREATE INDEX ON forums_users (user_nickname);
-cluster forums_users using forums_users_index;
 
 CREATE INDEX ON posts (thread_id);
 CREATE INDEX ON posts (path);
