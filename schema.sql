@@ -70,14 +70,13 @@ CREATE UNLOGGED TABLE forums_users
     PRIMARY KEY (user_nickname, forum_slug)
 );
 
-CREATE INDEX ON users (nickname, email);
 CREATE INDEX ON users USING hash (email);
-CREATE INDEX ON users USING hash (nickname);
-CREATE INDEX ON users (nickname, email, fullname, about);
+CREATE INDEX ON users USING hash (nickname) include (nickname, email, fullname, about);
 
 CREATE INDEX ON forums_users (forum_slug);
-CREATE INDEX ON forums_users (user_nickname, forum_slug) ;
+CREATE INDEX forums_users_index ON forums_users (user_nickname, forum_slug) ;
 CREATE INDEX ON forums_users (user_nickname);
+cluster forums_users using forums_users_index;
 
 CREATE INDEX ON posts (thread_id);
 CREATE INDEX ON posts (path);
@@ -92,7 +91,6 @@ CREATE INDEX ON posts (id, array_length(path, 1), thread_id);
 
 CREATE INDEX ON forums (user_nickname);
 CREATE INDEX ON forums USING hash (slug);
-CREATE INDEX ON forums (slug, title, user_nickname, threads_num, posts_num);
 
 CREATE INDEX ON votes (user_nickname);
 CREATE INDEX ON votes (thread_id);
@@ -101,7 +99,6 @@ CREATE INDEX ON threads (user_nickname);
 CREATE INDEX ON threads (forum_slug);
 CREATE INDEX ON threads (id);
 CREATE INDEX ON threads USING hash (slug);
-CREATE INDEX ON threads (id, slug, title, message, created, user_nickname, forum_slug, votes);
 
 CREATE
     OR REPLACE FUNCTION vote() RETURNS TRIGGER AS
@@ -138,7 +135,7 @@ CREATE TRIGGER vote_count
 EXECUTE PROCEDURE vote();
 
 CREATE TRIGGER revote_count
-    BEFORE
+    AFTER
         UPDATE
     ON votes
     FOR EACH ROW
